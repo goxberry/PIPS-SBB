@@ -18,22 +18,33 @@
 #include <string>
 #include "BBSMPSLogging.hpp"
 #include "BBSMPSSolver.hpp"
-
+#include "BBSMPSUtils.hpp"
 
 class BBSMPSCuttingPlane {
 public:
 	BBSMPSCuttingPlane(double lb, double ub, denseBAVector &expr);
+	BBSMPSCuttingPlane(double lb, double ub, sparseBAVector &expr);
+	BBSMPSCuttingPlane(const BBSMPSCuttingPlane& p);
+	BBSMPSCuttingPlane();
 	~BBSMPSCuttingPlane();
 	bool applyCuttingPlane();
+	int getPlaneUid(){return uid;}
 
 private:
-	
-		
+	bool applyCrossScenarioCuttingPlane();
+	bool applySingleScenarioCuttingPlane();
+
 protected:
 		
+		  //Class variable used to assign node numbers upon instantiation
+  		static int planeCounter;
+
 		double lb;
 		double ub;
-		denseBAVector expr;
+		denseBAVector dExpr;
+		sparseBAVector sExpr;
+		bool isExpressionDense;
+		int uid;
 
 };
 

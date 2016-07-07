@@ -57,6 +57,9 @@
 #include "BBSMPSHeuristicBestRINSJump.hpp"
 #include "BBSMPSHeuristicSolutionPolishing.hpp"
 #include "BBSMPSPseudoCostBranchingRule.hpp"
+#include "BBSMPSCuttingPlane.hpp"
+#include "BBSMPSCuttingPlaneGenerator01KP.hpp"
+#include "BBSMPSCuttingPlanesManager.hpp"
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus);
 
@@ -78,7 +81,7 @@ public:
   if(lhs->getParentObjective() == rhs->getParentObjective()){
     return (lhs->getNodeNumber() < rhs->getNodeNumber());
   }
-  return (lhs->getParentObjective() > rhs->getParentObjective());
+  return (lhs->getParentObjective() < rhs->getParentObjective());
   
  }
 };
@@ -107,9 +110,9 @@ public:
   // - set solver status to "LoadedFromFile" because this interface forces MILP to
   //   be loaded from an SMPS file
 
-  BBSMPSTree(const SMPSInput& smps);
+  BBSMPSTree(const SMPSInput& smps, int nSolvers);
 
-  BBSMPSTree(BBSMPSNode &node, double lb=COIN_DBL_MIN, double ub=COIN_DBL_MAX);
+  BBSMPSTree(BBSMPSNode *node, double lb=COIN_DBL_MIN, double ub=COIN_DBL_MAX);
 
   // Default destructor
   ~BBSMPSTree();
@@ -120,6 +123,8 @@ public:
 
   void setSolLimit(int _solLim);
 
+  void setGAPTolLimit( double _GAPTolLim);
+
   bool retrieveBestSolution(BBSMPSSolution &solution);
 
   void branchAndBound();
@@ -128,15 +133,23 @@ public:
 
   void loadMIPHeuristics();
 
+  void loadCuttingPlanes();
+
   void setVerbosity(bool verbose);
 
+  void removeCuts();
 
-  void loadHeuristic(BBSMPSHeuristic *heur);
+
+void loadLPHeuristic(BBSMPSHeuristic *heur);
+  void loadMIPHeuristic(BBSMPSHeuristic *heur);
   void generateIncrementalWarmState(BBSMPSNode* node, const BAFlagVector<variableState> & originalState, const BAFlagVector<variableState> &currentState);
 
 
   BBSMPSNode* topOfHeap();
 
+  static BBSMPSNode* getRootNode(){
+    return rootNode;
+  }
 
 
   void setLB(double lb){ objLB=lb;};
@@ -144,7 +157,6 @@ public:
 
 
 private:
-
 
 
     // Node selection rule, determines which node is chosen next. By default, it is bestbound, 
@@ -178,12 +190,14 @@ private:
   int nodesBecameInteger;
   bool verbosityActivated;
 
+  vector<int> currentlyAppliedPlanes;
   BBSMPSBranchingRuleManager branchingRuleManager;
   BBSMPSHeuristicsManager heuristicsManager;
+  BBSMPSCuttingPlanesManager cuttingPlanesManager;
   // max-heap data structure with nodes
   // TODO: Refactor to vector<BranchAndBound> & replace w/ make_heap, push_heap, pop_heap
   //std::priority_queue<BBSMPSNode, std::vector<BBSMPSNode>, std::less<BBSMPSNode> > heap; // max-heap
-  std::priority_queue<BBSMPSNode*, std::vector<BBSMPSNode*>, nodePtrComparison > heap; // min-heap
+  std::multiset<BBSMPSNode*, nodePtrComparison > heap; // min-heap
 
   // Solver status; can only be in the set {LoadedFromFile, Initialized,
   // PrimalFeasible, Optimal, ProvenUnbounded, ProvenInfeasible, Stopped}
@@ -191,6 +205,8 @@ private:
   // to the solver has to load problem data from a file as one of the first
   // steps.
   BBSMPSSolverState status;
+
+  static BBSMPSNode* rootNode;
 
     // Auxiliary functions for branching
   int getFirstStageMinIntInfeasCol(const denseBAVector& primalSoln);
@@ -204,6 +220,7 @@ private:
   void setStatusToStopped();
 
 
+void communicate();
   
   // Make default constructor impossible to call.
   BBSMPSTree();

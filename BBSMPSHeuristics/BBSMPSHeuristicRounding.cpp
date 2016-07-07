@@ -3,8 +3,7 @@
 using namespace std;
 
 
-bool BBSMPSHeuristicRounding::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution, BBSMPSSolution &solution, double objUB){
-	
+bool BBSMPSHeuristicRounding::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	double startTimeStamp = MPI_Wtime();
 	int mype=BBSMPSSolver::instance()->getMype();
 	timesCalled++;
@@ -70,9 +69,17 @@ bool BBSMPSHeuristicRounding::runHeuristic(BBSMPSNode* node, denseBAVector &LPRe
 	lpStatus = rootSolver.getStatus();
 	otherThanOptimal = (Optimal != lpStatus); 
 	
-	if(!otherThanOptimal){
+	double objUB=COIN_DBL_MAX;
+	if (BBSMPSSolver::instance()->getSolPoolSize()>0)objUB=BBSMPSSolver::instance()->getSoln(0).getObjValue();
+
+	
+	if(!otherThanOptimal && rootSolver.getObjective()<objUB){
 		denseBAVector solVector=rootSolver.getPrimalSolution();
-		solution=BBSMPSSolution(solVector,rootSolver.getObjective());
+		if (isLPIntFeas(solVector)){
+			BBSMPSSolution sol(solVector,rootSolver.getObjective());
+			sol.setTimeOfDiscovery(BBSMPSSolver::instance()->getWallTime());
+			BBSMPSSolver::instance()->addSolutionToPool(sol);
+		}
 		
 	}
 	//return if success

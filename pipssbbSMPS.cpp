@@ -27,18 +27,24 @@ int main(int argc, char **argv) {
 
         // Get MPI process rank
   int mype;
+  int nprocs;
   MPI_Comm_rank(MPI_COMM_WORLD,&mype);
+  MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
 
         // Help information if not enough arguments
-  if (argc < 2) {
-    if (0 == mype) printf("Usage: %s [SMPS root name]\n",argv[0]);
+  if (argc < 3) {
+    if (0 == mype) printf("Usage: %s [SMPS root name] [number of parallel solvers]\n",argv[0]);
     return 1;
   }
 
+  if (nprocs % atoi(argv[2])!=0){
+    if (0 == mype) printf("Number of MPI workers must be divisible by the number of parallel solvers.\n");
+    return 1;
+  }
   // Set PIPS logging level.
   
-  BBSMPSLogging::init_logging(3);
-  //PIPSLogging::init_logging(1 );
+  BBSMPSLogging::init_logging(1);  
+  //PIPSLogging::init_logging(1 ); 
 
   
         // Get SMPS file name and open SMPS file
@@ -51,15 +57,16 @@ int main(int argc, char **argv) {
 
         // Pass communicator to block angular data structures for data distribution
   BAContext ctx(MPI_COMM_WORLD);
-
+  int nsolvers=atoi(argv[2]);
   // Initialize branch-and-bound tree
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Initializing branch-and-bound tree.";
-  BBSMPSTree bb(input);
+  BBSMPSTree bb(input,nsolvers);
 
-  bb.loadSimpleHeuristics();
-  bb.loadMIPHeuristics();
+  //bb.loadSimpleHeuristics();
+  //bb.loadMIPHeuristics();
   bb.setTimeLimit(3600);
-  //bb.setNodeLimit(100000);
+  bb.setNodeLimit(50);
+  //bb.loadCuttingPlanes();
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) <<"Calling branch-and-bound.";
   bb.branchAndBound();
 

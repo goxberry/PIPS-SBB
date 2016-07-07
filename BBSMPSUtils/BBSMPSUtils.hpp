@@ -39,4 +39,12 @@ extern  bool isLPIntFeas(const denseBAVector& primalSoln);
 
 extern double floorFracPart(double x); 
 
+// TODO: isZero, isOne, and isBinary are utility methods that should be
+  // migrated to a utilities class/namespace. (These functions were given
+  // 2 args for flexibility and ease of refactoring.)
+extern  bool isZero(double x, double tol);
+extern  bool isOne(double x, double tol);
+extern  bool isBinary(double colLB, double colUB, double tol);
+
+
 #endif

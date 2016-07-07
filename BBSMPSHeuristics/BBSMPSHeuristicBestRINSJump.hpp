@@ -28,7 +28,7 @@ class BBSMPSHeuristicBestRINSJump: public BBSMPSHeuristic {
 	
 public:
 	BBSMPSHeuristicBestRINSJump(int offset, int depth,  const char *_name, int _nodeLim): nodeLim(_nodeLim),BBSMPSHeuristic(offset,depth,_name){};
-	bool runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution, BBSMPSSolution &solution, double objUB);
+	bool runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution);
 	bool shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution);
 
 private:

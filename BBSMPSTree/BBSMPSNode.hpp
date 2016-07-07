@@ -35,10 +35,12 @@ class BBSMPSNode {
 public:
 
   // Construct node from {lower, upper} bounds, obj val of parent node
-  BBSMPSNode(double _objectiveValue,const BAFlagVector<variableState> &states);
-  BBSMPSNode(double _objectiveValue, const std::vector< std::pair < BAIndex, variableState > > &states);
-  BBSMPSNode(BBSMPSNode* parent,std::vector<BBSMPSBranchingInfo>& bInfos);
+  BBSMPSNode(double _objectiveValue,const BAFlagVector<variableState> &states, int procOfOrigin);
+  BBSMPSNode(double _objectiveValue, const std::vector< std::pair < BAIndex, variableState > > &states, int procOfOrigin);
+  BBSMPSNode(BBSMPSNode* parent,std::vector<BBSMPSBranchingInfo>& bInfos, int procOfOrigin);
 
+  //Construct node from serialized object
+  BBSMPSNode(int *intVector, double *dblVector);
   // Add copy constructor so that priority_queue can use it for
   // instantiation because denseBAVector and BAFlagVector do not have
   // assignment operators or copy constructors.
@@ -91,7 +93,7 @@ public:
 
   void addBranchingInformation(BBSMPSBranchingInfo& bi);
 
-  void addCuttingPlane(BBSMPSCuttingPlane &cp);
+  void addCuttingPlane(BBSMPSCuttingPlane *cp);
 
   void incrementAliveChildren();
 
@@ -117,20 +119,30 @@ public:
 
   void getCurrentNodeCuttingPlanes(std::vector<BBSMPSCuttingPlane*> &cpVector);
 
+  void copyCuttingPlanes(BBSMPSNode *node);
+
+void getAllCuttingUids(std::vector<int> &uidVector);
+
+  void getCurrentNodeCuttingPlaneUids(std::vector<int> &uidVector);
   int getNodeNumber() const;
 
   void setNodeDepth(int depth);
 
   int getNodeDepth();
 
+  void getSerializationSize(int &intVectorSize, int &dblVectorSize);
+
+  void serialize(int *intVector, double *dblVector);
+
   static void initializeNodeCounter();
 
-
+int getPartialStateInfoSize();
 private:
 
   //Class variable used to assign node numbers upon instantiation
   static int nodeCounter;
 
+  int procNumber;
   int nodeNumber;
 
   //Depth of the node within the BB tree
@@ -156,8 +168,8 @@ private:
 
 
   //Incremental cutting plane information relative to this node
-  std::vector<BBSMPSCuttingPlane> cuttingPlanes;
-
+  std::vector<BBSMPSCuttingPlane*> cuttingPlanes;
+  vector<int> cuttingPlaneUids;
   // TODO: Local cut objects; Global cuts are stored in the B&B tree.
 
   void auxCopyAllBranchingInformation(std::vector<BBSMPSBranchingInfo> &biVector);
@@ -170,6 +182,13 @@ private:
 
 
   BBSMPSNode(); // Disallow default constructor
+
+protected:
+
+  int serializePartialStateInfo(int* intVector);
+
+  int serializeBranchingInfo(int *intVector, double *dblVector);
+
 
 };
 

@@ -33,8 +33,7 @@ public:
 private:
 		std::string name;
 protected:
-		int timesCalled;
-		int timesSuccessful;
+	int cuttingPlanesGenerated;
 	
 
 };

@@ -5,13 +5,14 @@ using namespace std;
 
 
 
-bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution, BBSMPSSolution &solution, double objUB){
-	
-	double startTimeStamp = MPI_Wtime();
+bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	int mype=BBSMPSSolver::instance()->getMype();
-	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Performing the Fix and Dive heuristic.";
-	timesCalled++;
+	
+	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Performing the Magic heuristic.";
 
+	double startTimeStamp = MPI_Wtime();
+	
+	timesCalled++;
 
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	
@@ -38,7 +39,6 @@ bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelax
 		if(ctx.assignedScenario(scen)) {
 			for (int c = 0; c < input.nSecondStageCons(scen); c++)
 			{
-
 				const CoinShallowPackedVector row=rootSolver.retrieveTRow(c,scen);
 				int nElems=row.getNumElements();
 				const int*indices=row.getIndices();
@@ -129,20 +129,17 @@ bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelax
 
 			lb.getFirstStageVec()[bestLockIndex]=roundToNearestInteger(auxSolution.getFirstStageVec()[bestLockIndex]);
 			ub.getFirstStageVec()[bestLockIndex]=roundToNearestInteger(auxSolution.getFirstStageVec()[bestLockIndex]);
-		//	cout<<"Rounding Nearest -1 "<<bestLockIndex<<" to "<<lb.getFirstStageVec()[bestLockIndex]<<" Score: "<<downLocks.getFirstStageVec()[bestLockIndex]<<" "<<upLocks.getFirstStageVec()[bestLockIndex]<<" obj "<<variableObjectives.getFirstStageVec()[bestLockIndex]<<endl;
-	
+		
 		}
 		else if (bestLock==upLocks.getFirstStageVec()[bestLockIndex]){
 
 			lb.getFirstStageVec()[bestLockIndex]=floor(auxSolution.getFirstStageVec()[bestLockIndex]);
 			ub.getFirstStageVec()[bestLockIndex]=floor(auxSolution.getFirstStageVec()[bestLockIndex]);	
-		//	cout<<"Rounding down -1 "<<bestLockIndex<<" to "<<lb.getFirstStageVec()[bestLockIndex]<<" Score: "<<downLocks.getFirstStageVec()[bestLockIndex]<<" "<<upLocks.getFirstStageVec()[bestLockIndex]<<" obj "<<variableObjectives.getFirstStageVec()[bestLockIndex]<<endl;
 		}
 		else{
 
 			lb.getFirstStageVec()[bestLockIndex]=ceil(auxSolution.getFirstStageVec()[bestLockIndex]);
 			ub.getFirstStageVec()[bestLockIndex]=ceil(auxSolution.getFirstStageVec()[bestLockIndex]);
-		//	cout<<"Rounding up -1 "<<bestLockIndex<<" to "<<lb.getFirstStageVec()[bestLockIndex]<<" Score: "<<downLocks.getFirstStageVec()[bestLockIndex]<<" "<<upLocks.getFirstStageVec()[bestLockIndex]<<" obj "<<variableObjectives.getFirstStageVec()[bestLockIndex]<<endl;
 		}
 		
 		rootSolver.setLB(lb);
@@ -209,26 +206,22 @@ bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelax
 	while (maxCont>-1){
 		iteration++;
 		if (bestLockIndex>-1){
-			// cout<<input.nSecondStageVars(bestFracScen)<<" we are about to update!!"<<mype<<" has chosen "<<bestFracIndex<<" frac part "<<bestFracPart<<" frac scen "<<bestFracScen<<" "<<maxCont<<endl;
-	
+		
 		if (bestLock==upLocks.getSecondStageVec(bestLockScen)[bestLockIndex] && bestLock==downLocks.getSecondStageVec(bestLockScen)[bestLockIndex]){
 			lb.getSecondStageVec(bestLockScen)[bestLockIndex]=roundToNearestInteger(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			ub.getSecondStageVec(bestLockScen)[bestLockIndex]=roundToNearestInteger(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
-		//	 cout<<" we are about to update!!"<<mype<<" has chosen "<<bestLockIndex<<" frac  "<<roundToNearestInteger(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex])<<"best lock "<<bestLock<<endl;
-	
+		
 		}
 
 	
 			if (bestLock==upLocks.getSecondStageVec(bestLockScen)[bestLockIndex] ){
-		//		 cout<<" we are about to update!!"<<mype<<" has chosen "<<bestLockIndex<<" frac  "<<floor(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex])<<"best lock "<<bestLock<<endl;
-	
+		
 				lb.getSecondStageVec(bestLockScen)[bestLockIndex]=floor(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 				ub.getSecondStageVec(bestLockScen)[bestLockIndex]=floor(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			
 			}
 			else{
-		//		 cout<<" we are about to update!!"<<mype<<" has chosen "<<bestLockIndex<<" frac  "<<ceil(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex])<<"best lock "<<bestLock<<endl;
-	
+		
 				lb.getSecondStageVec(bestLockScen)[bestLockIndex]=ceil(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 				ub.getSecondStageVec(bestLockScen)[bestLockIndex]=ceil(auxSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			}
@@ -237,11 +230,8 @@ bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelax
 		}
 		rootSolver.setLB(lb);
 			rootSolver.setUB(ub);
-		//cout<<mype<<" got here "<<endl;
 		rootSolver.commitStates();	
-//cout<<mype<<" got here 2"<<endl;
 		rootSolver.go();
-//cout<<mype<<" got here3 "<<endl;
 		solverState lpStatus = rootSolver.getStatus();
 		bool otherThanOptimal = (Optimal != lpStatus); 
 		int anyOtherThanOptimal=0;
@@ -278,19 +268,25 @@ bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelax
 		maxCont=-2;
 	    errorFlag = MPI_Allreduce(&bestLock, &maxCont, 1, MPI_INT,  MPI_MAX, ctx.comm());
 
-	   // cout<<iteration<<" "<<mype<<" has chosen "<<bestLockIndex<<" frac part "<<bestLock<<" frac scen "<<bestLockScen<<" "<<maxCont<<endl;
-
+	  
 	}
 
    	
 	solverState lpStatus = rootSolver.getStatus();
 	bool otherThanOptimal = (Optimal != lpStatus); 
 	
+	double objUB=COIN_DBL_MAX;
+	if (BBSMPSSolver::instance()->getSolPoolSize()>0)objUB=BBSMPSSolver::instance()->getSoln(0).getObjValue();
+
 	if(!otherThanOptimal){
 		denseBAVector solVector=rootSolver.getPrimalSolution();
-		solution=BBSMPSSolution(solVector,rootSolver.getObjective());
+		if (isLPIntFeas(solVector)){
+					BBSMPSSolution sol(solVector,rootSolver.getObjective());
+					sol.setTimeOfDiscovery(BBSMPSSolver::instance()->getWallTime());
+					BBSMPSSolver::instance()->addSolutionToPool(sol);
+		}
 
-		 
+		
 	}
 	//return if success
 	bool success= (!otherThanOptimal && rootSolver.getObjective()<objUB);

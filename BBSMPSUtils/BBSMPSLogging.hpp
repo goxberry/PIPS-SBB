@@ -16,6 +16,7 @@
 #include "PIPSLogging.hpp"
 
 
+
 class BBSMPSLogging: public PIPSLogging
 {
 private:
@@ -38,7 +39,6 @@ public:
   static void init_logging(int level)
   {
     using boost::shared_ptr;
-    
     //create a text output sink:
     typedef sinks::synchronous_sink< sinks::text_ostream_backend > text_sink;
     shared_ptr< text_sink > pSink(new text_sink);

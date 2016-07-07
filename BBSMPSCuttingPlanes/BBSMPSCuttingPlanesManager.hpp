@@ -17,12 +17,12 @@
 #include <set>
 #include <vector>
 #include "BBSMPSCuttingPlaneGenerator.hpp"
-
+#include "BBSMPSSolver.hpp"
 
 class BBSMPSCuttingPlanesManager {
 
 public:
-	BBSMPSCuttingPlanesManager();
+	BBSMPSCuttingPlanesManager(int maxRounds);
 
 	~BBSMPSCuttingPlanesManager();
 
@@ -36,6 +36,7 @@ public:
 
 private:
 	std::vector<BBSMPSCuttingPlaneGenerator*> cuttingPlaneGeneratorsList;
+	int maxRounds;
 };
 
 #endif

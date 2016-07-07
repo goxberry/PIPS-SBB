@@ -6,9 +6,13 @@ bool sortfunction (pair<int, int> i,pair<int, int> j) { return (i.first<j.first)
 
 
 
-bool BBSMPSHeuristicSolutionPolishing::runHeuristic(BBSMPSNode* node, denseBAVector &nodeSolution, BBSMPSSolution &solution, double objUB){
+bool BBSMPSHeuristicSolutionPolishing::runHeuristic(BBSMPSNode* node, denseBAVector &nodeSolution){
 	int originalSolutionPoolSize=BBSMPSSolver::instance()->getSolPoolSize();
 	
+		double objUB=COIN_DBL_MAX;
+	if (BBSMPSSolver::instance()->getSolPoolSize()>0)objUB=BBSMPSSolver::instance()->getSoln(0).getObjValue();
+
+
 	//Steps for the heuristic
 	double startTimeStamp = MPI_Wtime();
 	int mype=BBSMPSSolver::instance()->getMype();
@@ -65,7 +69,6 @@ bool BBSMPSHeuristicSolutionPolishing::runHeuristic(BBSMPSNode* node, denseBAVec
 					for (int i = 0; i < input.nSecondStageVars(scen)*0.9; i++)
 					{
 						int col=objectiveContribution[i].second;
-						//cout<<"Fixing variable "<<col<< " with "<<objectiveContribution[i].first<<endl;
 						if(input.isSecondStageColInteger(scen,col)){
 							if (isIntFeas(solutionVector1.getSecondStageVec(scen)[col],intTol)){
 								double sol1Val=solutionVector1.getSecondStageVec(scen)[col];
@@ -93,21 +96,20 @@ bool BBSMPSHeuristicSolutionPolishing::runHeuristic(BBSMPSNode* node, denseBAVec
 				}
 			}
 
-			cout<<"Running a polishing of "<<sol1.getSolNumber()<<". fixes "<<count<<" out of "<<totalVars<<endl;
 			//Run 
 			//Create a node
-			BBSMPSNode rootNode(NULL, bInfos);
+			BBSMPSNode* rootNode= new BBSMPSNode(NULL, bInfos,BBSMPSSolver::instance()->getSBBMype());
 			//BAFlagVector<variableState> ps(BBSMPSSolver::instance()->getOriginalWarmStart());
 			//node->reconstructWarmStartState(ps);
 			//rootNode.setWarmStartState(ps);
-
+			//rootNode->copyCuttingPlanes(BBSMPSTree::getRootNode());
 			//Create a tree && Add node to tree
 			BBSMPSTree bb(rootNode,COIN_DBL_MIN,objUB);
 			bb.setVerbosity(false);
 			//Add simple heuristics to tree
 			//bb.loadSimpleHeuristics();
 			BBSMPSHeuristicLockRounding *hr= new BBSMPSHeuristicLockRounding(1,1,"LockRounding");
-	  		bb.loadHeuristic(hr);
+	  		bb.loadLPHeuristic(hr);
 			//Add time/node limit
 			bb.setNodeLimit(nodeLim);
 			bb.setSolLimit(1);
@@ -126,14 +128,16 @@ bool BBSMPSHeuristicSolutionPolishing::runHeuristic(BBSMPSNode* node, denseBAVec
 
 	}
 
+	double objUB2=COIN_DBL_MAX;
+	if (BBSMPSSolver::instance()->getSolPoolSize()>0)objUB2=BBSMPSSolver::instance()->getSoln(0).getObjValue();
 
-		//Retrieve best solution and return
-	bool success=(originalSolutionPoolSize!=BBSMPSSolver::instance()->getSolPoolSize());
+	bool success=(objUB2!=objUB);
+
 	timesCalled++;
 	timesSuccessful+=(success);
 
 	cumulativeTime+=(MPI_Wtime()-startTimeStamp);
-	return false;
+	return success;
 
 }
 

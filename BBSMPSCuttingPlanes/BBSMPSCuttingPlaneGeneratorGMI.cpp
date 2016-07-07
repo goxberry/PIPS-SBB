@@ -9,8 +9,7 @@ void fillPlaneExpression(denseBAVector &expr, sparseBAVector &row, double beta){
 	BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
     SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
-   // cout<<" dims of things "<<dimsSlacks.inner.numVars(-1)<<" "<<dimsSlacks.numCons(-1)<<endl;
-	double bHat= floorFracPart(beta);
+    double bHat= floorFracPart(beta);
 	const CoinIndexedVector &v1 = row.getVec(-1).v;
 	const double *v1Elts = v1.denseVector();
 	const int* v1Idx = v1.getIndices();
@@ -31,7 +30,6 @@ void fillPlaneExpression(denseBAVector &expr, sparseBAVector &row, double beta){
 				if (val>0) coef=val/bHat;
 				else coef= (-val/(1-bHat));
 			}
-			//cout<<"Trying to write "<<coef<<" on "<<r<<endl;
 			if (coef!=0)expr.getFirstStageVec()[r]=coef;
 		}
 
@@ -72,7 +70,6 @@ void fillPlaneExpression(denseBAVector &expr, sparseBAVector &row, double beta){
 
 bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	//Generate cut here
-	//cout<<"We are generating GMI cuts"<<endl;
 	//BBSMPS_ALG_LOG_SEV(info) <<"We are generating GMI cuts"<< status;
 	PIPSSInterface &solver= BBSMPSSolver::instance()->getPIPSInterface();
     const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
@@ -108,7 +105,7 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 			fillPlaneExpression(expr, newRow, val);
 			double bHat= floorFracPart(val);
 	
-			BBSMPSCuttingPlane cuttingPlane(bHat, COIN_DBL_MAX, expr);
+			BBSMPSCuttingPlane *cuttingPlane= new BBSMPSCuttingPlane(bHat, COIN_DBL_MAX, expr);
 			node->addCuttingPlane(cuttingPlane);
 		} 
 		
@@ -140,7 +137,7 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 					fillPlaneExpression(expr, newRow, val);
 					double bHat= floorFracPart(val);
 	
-					BBSMPSCuttingPlane cuttingPlane(1, COIN_DBL_MAX, expr);
+					BBSMPSCuttingPlane *cuttingPlane= new BBSMPSCuttingPlane(1, COIN_DBL_MAX, expr);
 					node->addCuttingPlane(cuttingPlane);
 
 				}
@@ -150,7 +147,6 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 
 	
 
-	//cout<<"We would make a total of "<<count<<" cuts"<<endl;
 	return false;
 
 }

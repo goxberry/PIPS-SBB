@@ -10,7 +10,6 @@ using namespace std;
 	BBSMPSSolution::BBSMPSSolution(const denseBAVector &_solutionVector, double _objValue,double _timeOfDiscovery):
 	objValue(_objValue),timeOfDiscovery(_timeOfDiscovery),solutionVector(_solutionVector){
 		solNumber=(++solCounter);
-		cout<<"Generating solution with "<<solNumber<<" "<<_objValue<<" "<<_timeOfDiscovery<<endl;
 	}
 
 
@@ -22,7 +21,7 @@ using namespace std;
 	}
 	void BBSMPSSolution::getSolutionVector(denseBAVector &_solutionVector)const{
 		
-		_solutionVector = denseBAVector(solutionVector);
+		_solutionVector = solutionVector;
 	}
 	void BBSMPSSolution::setObjValue(double _objValue){
 		objValue=_objValue;

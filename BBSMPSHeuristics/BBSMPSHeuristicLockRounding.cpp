@@ -493,11 +493,11 @@ int findFreshSecondStageVar(denseBAVector &roundedSolution,denseBAVector & upLoc
 	return 0;
 }
 
-bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution, BBSMPSSolution &solution, double objUB){
+bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	
 	double startTimeStamp = MPI_Wtime();
 	int mype=BBSMPSSolver::instance()->getMype();
-	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Performing the Fix and Dive heuristic.";
+	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Performing the Lock Rounding heuristic.";
 	timesCalled++;
 	//cout<<"ch1"<<endl;
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
@@ -615,18 +615,25 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 	}
 
 	
-	solverState lpStatus = rootSolver.getStatus();
+		solverState lpStatus = rootSolver.getStatus();
 	bool otherThanOptimal = (Optimal != lpStatus); 
 	
+	double objUB=COIN_DBL_MAX;
+	if (BBSMPSSolver::instance()->getSolPoolSize()>0)objUB=BBSMPSSolver::instance()->getSoln(0).getObjValue();
+
 	if(!otherThanOptimal){
 		denseBAVector solVector=rootSolver.getPrimalSolution();
-		solution=BBSMPSSolution(solVector,rootSolver.getObjective());
-		cout<<"DID WE FIND A LOCK ROUNDING SOLUTION "<<isLPIntFeas(solVector)<<" of qual "<<rootSolver.getObjective()<<endl;
+		if (isLPIntFeas(solVector)){
+					BBSMPSSolution sol(solVector,rootSolver.getObjective());
+					sol.setTimeOfDiscovery(BBSMPSSolver::instance()->getWallTime());
+					BBSMPSSolver::instance()->addSolutionToPool(sol);
+		}
 
 		
 	}
-	//cout<<"ch14"<<endl;
+
 	//return if success
+
 	bool success= (!otherThanOptimal && rootSolver.getObjective()<objUB);
 	timesSuccessful+=success;
 
@@ -637,7 +644,8 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 }
 
 bool BBSMPSHeuristicLockRounding::shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
-	if (node->getNodeDepth()<10)return true;
+	if (node->getNodeDepth()<5)return true;
+	else depth=25;
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	BAContext &ctx= BBSMPSSolver::instance()->getBAContext();
 	
@@ -690,7 +698,7 @@ bool BBSMPSHeuristicLockRounding::shouldItRun(BBSMPSNode* node, denseBAVector &L
 
 	nIntVars+=totalIntVars2;
 	numberOfFractionalVariables=+totalCount2;
-	cout<<"Total number of frac vars "<<numberOfFractionalVariables<<" n int vars "<<nIntVars<<	" ratio "<<(numberOfFractionalVariables*100/nIntVars)<<endl;
+	//cout<<"Total number of frac vars "<<numberOfFractionalVariables<<" n int vars "<<nIntVars<<	" ratio "<<(numberOfFractionalVariables*100/nIntVars)<<endl;
 	
 	if (nIntVars==0)return false;
 	return ((numberOfFractionalVariables*100/nIntVars)<40 );

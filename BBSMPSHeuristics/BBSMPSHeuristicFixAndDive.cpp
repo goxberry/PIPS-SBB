@@ -8,10 +8,9 @@ bool secondStageVariableVectorSort(pair <pair<int, int> , double> i,pair <pair<i
 
 
 
-bool BBSMPSHeuristicFixAndDive::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution, BBSMPSSolution &solution, double objUB){
+bool BBSMPSHeuristicFixAndDive::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	double startTimeStamp = MPI_Wtime();
 	int mype=BBSMPSSolver::instance()->getMype();
-	const BADimensionsSlacks &originalDimensions= BBSMPSSolver::instance()->getBADimensionsSlacks();
 	
 	timesCalled++;
 	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Performing the Fix and Dive heuristic.";
@@ -55,7 +54,10 @@ bool BBSMPSHeuristicFixAndDive::runHeuristic(BBSMPSNode* node, denseBAVector &LP
 
 		solverState lpStatus = rootSolver.getStatus();
 		bool otherThanOptimal = (Optimal != lpStatus); 
-		if (otherThanOptimal) return false;
+		if (otherThanOptimal) {
+			cumulativeTime+=(MPI_Wtime()-startTimeStamp);
+			return false;
+		} 
 		auxSolution=rootSolver.getPrimalSolution();
 
 
@@ -71,6 +73,11 @@ bool BBSMPSHeuristicFixAndDive::runHeuristic(BBSMPSNode* node, denseBAVector &LP
 	    }
 	    allInteger=(bestFracIndex==-1);
 
+	}
+
+	for (int i=0; i< input.nFirstStageVars(); i++){
+ 		lb.getFirstStageVec()[i]=auxSolution.getFirstStageVec()[i];
+		ub.getFirstStageVec()[i]=auxSolution.getFirstStageVec()[i];
 	}
    
 	int bestFracScen=-1;
@@ -98,26 +105,25 @@ bool BBSMPSHeuristicFixAndDive::runHeuristic(BBSMPSNode* node, denseBAVector &LP
 	while (maxCont>-1){
 		iteration++;
 		if (bestFracIndex>-1){
-			 //cout<<input.nSecondStageVars(bestFracScen)<<" we are about to update!!"<<mype<<" has chosen "<<bestFracIndex<<" frac part "<<bestFracPart<<" frac scen "<<bestFracScen<<" "<<maxCont<<endl;
-	
+			
 			lb.getSecondStageVec(bestFracScen)[bestFracIndex]=roundToNearestInteger(auxSolution.getSecondStageVec(bestFracScen)[bestFracIndex]);
 			ub.getSecondStageVec(bestFracScen)[bestFracIndex]=roundToNearestInteger(auxSolution.getSecondStageVec(bestFracScen)[bestFracIndex]);
 			
 			
 		}
 		rootSolver.setLB(lb);
-			rootSolver.setUB(ub);
-		//cout<<mype<<" got here "<<endl;
+		rootSolver.setUB(ub);
 		rootSolver.commitStates();	
-//cout<<mype<<" got here 2"<<endl;
 		rootSolver.go();
-//cout<<mype<<" got here3 "<<endl;
 		solverState lpStatus = rootSolver.getStatus();
-		bool otherThanOptimal = (Optimal != lpStatus); 
+		int otherThanOptimal = (Optimal != lpStatus); 
 		int anyOtherThanOptimal=0;
-	     MPI_Allreduce(&anyOtherThanOptimal, &otherThanOptimal, 1, MPI_INT,  MPI_MAX, ctx.comm());
+	     MPI_Allreduce(&otherThanOptimal, &anyOtherThanOptimal, 1, MPI_INT,  MPI_MAX, ctx.comm());
 
-		if (anyOtherThanOptimal>0) return false;
+		if (anyOtherThanOptimal!=0){
+			cumulativeTime+=(MPI_Wtime()-startTimeStamp);
+			return false;
+		} 
 		auxSolution=rootSolver.getPrimalSolution();
 
 
@@ -152,18 +158,23 @@ bool BBSMPSHeuristicFixAndDive::runHeuristic(BBSMPSNode* node, denseBAVector &LP
 		maxCont=0;
 	    errorFlag = MPI_Allreduce(&bestFracIndex, &maxCont, 1, MPI_INT,  MPI_MAX, ctx.comm());
 
-	    //cout<<iteration<<" "<<mype<<" has chosen "<<bestFracIndex<<" frac part "<<bestFracPart<<" frac scen "<<bestFracScen<<" "<<maxCont<<" frac vals? "<<fracVals<<endl;
 	}
 
    	
 	solverState lpStatus = rootSolver.getStatus();
 	bool otherThanOptimal = (Optimal != lpStatus); 
 	
+	double objUB=COIN_DBL_MAX;
+	if (BBSMPSSolver::instance()->getSolPoolSize()>0)objUB=BBSMPSSolver::instance()->getSoln(0).getObjValue();
+
+	
 	if(!otherThanOptimal){
 		denseBAVector solVector=rootSolver.getPrimalSolution();
-		solution=BBSMPSSolution(solVector,rootSolver.getObjective());
-
-		 
+		if (isLPIntFeas(solVector)){
+					BBSMPSSolution sol(solVector,rootSolver.getObjective());
+					sol.setTimeOfDiscovery(BBSMPSSolver::instance()->getWallTime());
+					BBSMPSSolver::instance()->addSolutionToPool(sol);	
+		} 
 	}
 	//return if success
 	bool success= (!otherThanOptimal && rootSolver.getObjective()<objUB);

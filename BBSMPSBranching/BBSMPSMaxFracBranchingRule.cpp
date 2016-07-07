@@ -70,8 +70,8 @@ void BBSMPSMaxFracBranchingRule::branchOnFirstStage(BBSMPSNode * node, std::vect
     bInfosRightKid.push_back( BBSMPSBranchingInfo(branchCol, floor(primalSoln.getFirstStageVec()[branchCol]), 'U', 1));
 	//Create both children
 
-    BBSMPSNode *leftKidNode= new BBSMPSNode(node, bInfosLeftKid);
-    BBSMPSNode *rightKidNode= new BBSMPSNode(node, bInfosRightKid);
+    BBSMPSNode *leftKidNode= new BBSMPSNode(node, bInfosLeftKid,BBSMPSSolver::instance()->getSBBMype());
+    BBSMPSNode *rightKidNode= new BBSMPSNode(node, bInfosRightKid,BBSMPSSolver::instance()->getSBBMype());
     childNodes.push_back(leftKidNode);
     childNodes.push_back(rightKidNode);
 
@@ -112,8 +112,7 @@ void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vec
     // index of an integer infeasible variable.
 
 	int myRankBranchScen(input.nScenarios() + 1);
-    //if (0 == mype) cout << "myRankBranchScen = " << myRankBranchScen << endl;
-	for (int scen = 0; scen < input.nScenarios(); scen++)
+    for (int scen = 0; scen < input.nScenarios(); scen++)
 	{
 		if(ctx.assignedScenario(scen)) {
 			if(!isSecondStageIntFeas(primalSoln, scen,input)) {
@@ -148,8 +147,8 @@ void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vec
 	}
 
 
-	BBSMPSNode *leftKidNode= new BBSMPSNode(node, bInfosLeftKid);
-	BBSMPSNode *rightKidNode= new BBSMPSNode(node, bInfosRightKid);
+	BBSMPSNode *leftKidNode= new BBSMPSNode(node, bInfosLeftKid,BBSMPSSolver::instance()->getSBBMype());
+	BBSMPSNode *rightKidNode= new BBSMPSNode(node, bInfosRightKid,BBSMPSSolver::instance()->getSBBMype());
 	childNodes.push_back(leftKidNode);
 	childNodes.push_back(rightKidNode);
 
