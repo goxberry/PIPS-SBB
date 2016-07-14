@@ -175,7 +175,7 @@ bool BBSMPSCuttingPlane::applyCuttingPlane(){
 		 		
 		 	}
 		 }
-		MPI_Allreduce(MPI_IN_PLACE,&nScensInExpr,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+		MPI_Allreduce(MPI_IN_PLACE,&nScensInExpr,1,MPI_INT,MPI_SUM,ctx.comm());
 		//nScensInExpr+= (sExpr.getFirstStageVec().v.getNumElements()>0);
 		//Do crossScenario cut
 		if (nScensInExpr>1){

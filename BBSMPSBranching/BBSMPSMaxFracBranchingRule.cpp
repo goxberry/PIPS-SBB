@@ -131,8 +131,7 @@ void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vec
 		ctx.comm());
 	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Branching on second stage scenario "
 		<< branchScen << ".";
-	if (ctx.assignedScenario(branchScen))BBSMPS_ALG_LOG_SEV(info) << "Processor " << mype << " will branch on second stage scenario "
-	<< branchScen << ".";
+
 
     // Then, for that scenario number, get the minimal index of
     // an integer infeasible decision variable, and branch on that column
@@ -142,6 +141,9 @@ void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vec
 	if(ctx.assignedScenario(branchScen)) {
 
 		int branchCol = getSecondStageMinIntInfeasCol(primalSoln, branchScen,input);
+		BBSMPS_ALG_LOG_SEV(info) << "Processor " << mype << " will branch on variable "<<branchCol<<" of second stage scenario "
+	<< branchScen << " "<<primalSoln.getSecondStageVec(branchScen)[branchCol]<<".";
+
 		bInfosLeftKid.push_back( BBSMPSBranchingInfo(branchCol, ceil(primalSoln.getSecondStageVec(branchScen)[branchCol]), 'L', 2,branchScen));
 		bInfosRightKid.push_back( BBSMPSBranchingInfo(branchCol, floor(primalSoln.getSecondStageVec(branchScen)[branchCol]), 'U', 2,branchScen));
 	}

@@ -174,9 +174,9 @@ private:
   double lpPrimalTol; // tolerance on LP primal problems
   double lpDualTol; // tolerance on LP dual problems
   double compTol; // tolerance on LP objective function comparisons
-
+  double commTol; //threshold for communication to happen
   int bbIterationCounter;
-
+  int totalBbIterationsDone;
   int solsDiscoveredInit;
   int solsDiscoveredLimit;
   int tiLim;
@@ -186,14 +186,34 @@ private:
   double PreProcessingTime;
   double LPRelaxationValue;
 
+  double totalIdleTime;
+  double totalCommTime;
+  double totalTimesCommCalled;
   int nodesFathomed;
   int nodesBecameInteger;
   bool verbosityActivated;
+  bool inTermination;
+
+ 
+
+double	bufferedUB;
+int 	bufferedItCounter;
+double	bufferedWorstLB;
+double	bufferedBestLB;
+int	bufferedNodesLeft;
 
   vector<int> currentlyAppliedPlanes;
   BBSMPSBranchingRuleManager branchingRuleManager;
   BBSMPSHeuristicsManager heuristicsManager;
   BBSMPSCuttingPlanesManager cuttingPlanesManager;
+  MPI_Request *request0;
+  MPI_Request *request1;
+  MPI_Request *request2;
+  MPI_Request *request3;
+  MPI_Request *request4;
+  bool communicationPending;
+  bool communicationActivated;
+  int iterationsBetweenCommunication;
   // max-heap data structure with nodes
   // TODO: Refactor to vector<BranchAndBound> & replace w/ make_heap, push_heap, pop_heap
   //std::priority_queue<BBSMPSNode, std::vector<BBSMPSNode>, std::less<BBSMPSNode> > heap; // max-heap
@@ -219,11 +239,12 @@ private:
 
   void setStatusToStopped();
 
-
-void communicate();
+bool shouldWePerformCommunication(int &counterToLastIter, bool &commDone);
+int communicate();
   
   // Make default constructor impossible to call.
   BBSMPSTree();
 
+void checkSequentialTerminationConditions();
 } ;
 #endif

@@ -87,6 +87,7 @@ BBSMPSNode::BBSMPSNode(int *intVector, double *dblVector){
     intPtr+=intSerialSize;
     dblPtr+=dblSerialSize;
   }
+  //cout<<" just created a node with "<<objectiveValue<<" node num "<<nodeNumber<<" prc n "<<procNumber<< " depth "<<nodeDepth<<" npartWS "<<partialStartState.size()<<" binfos "<<branchingInfos.size()<<endl;
 }
 
 BBSMPSNode::~BBSMPSNode(){
@@ -100,10 +101,11 @@ BBSMPSNode::~BBSMPSNode(){
 }
 
 double BBSMPSNode::getParentObjective() const{
-	if (parent!=NULL){
+	/*if (parent!=NULL){
     return parent->getObjective();
   }
-  return -INFINITY;
+  return -INFINITY;*/
+  return getObjective();
 }
 
 double BBSMPSNode::getObjective() const{
@@ -325,12 +327,10 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
       n_ptr=n_ptr->parent;
     }
 
-    int nWSs=getPartialStateInfoSize();
-    n_ptr = parent;
-    while(n_ptr!=NULL){
-      nWSs+=n_ptr->getPartialStateInfoSize();
-      n_ptr=n_ptr->parent;
-    }
+    std::map< pair< int , int > ,int> WSMap;
+    collectPartialStateInfo(WSMap);
+    int nWSs=WSMap.size();
+
     int intBranchSerialSize=0;
     int dblBranchSerialSize=0;
 
@@ -338,7 +338,7 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
 
     intVectorSize=5+branchingInfoSize*intBranchSerialSize+nWSs*3;
     dblVectorSize=1+branchingInfoSize*dblBranchSerialSize;
-    cout<<" int and dbl sizes "<<intVectorSize<<" "<<dblVectorSize<<endl;
+   // cout<<" int and dbl sizes "<<intVectorSize<<" "<<dblVectorSize<<endl;
   }
 
   void BBSMPSNode::serialize(int *intVector, double *dblVector){
@@ -360,22 +360,35 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
       nWSs+=n_ptr->getPartialStateInfoSize();
       n_ptr=n_ptr->parent;
     }
-    intVector[3]=nWSs;
+    
     intVector[4]=branchingInfoSize;
-    int ptrAfterWS=serializePartialStateInfo(&intVector[5]);
+    std::map< pair< int , int > ,int> WSMap;
+    int ptrAfterWS=serializePartialStateInfo(&intVector[5],WSMap);
+    intVector[3]=WSMap.size();
     serializeBranchingInfo(&intVector[5+ptrAfterWS],&dblVector[1]);
-    cout<<"serializing node "<<nodeNumber<<" "<<procNumber<<" "<<nodeDepth<<" "<<nWSs<<" "<<branchingInfoSize<<endl;
+   // cout<<"serializing node "<<nodeNumber<<" "<<procNumber<<" "<<nodeDepth<<" "<<nWSs<<" "<<branchingInfoSize<<endl;
   }
 
-  int BBSMPSNode::serializePartialStateInfo(int* intVector){
-    int ptr=0;
-    if(parent!=NULL)ptr=parent->serializePartialStateInfo(&intVector[ptr]);
+  int BBSMPSNode::collectPartialStateInfo(std::map< pair< int , int > ,int> &WSMap){
+    if (parent!=NULL) parent->collectPartialStateInfo(WSMap);
     for (int i=0;i<partialStartState.size(); i++){
-      intVector[ptr]=partialStartState[i].first.scen;
-      intVector[ptr+1]=partialStartState[i].first.idx;
-      intVector[ptr+2]=(partialStartState[i].second==Basic)*1+(partialStartState[i].second==AtLower)*2+(partialStartState[i].second==AtUpper)*3;
+      pair<int, int> aux(partialStartState[i].first.scen, partialStartState[i].first.idx);
+      WSMap[aux]=(partialStartState[i].second==Basic)*1+(partialStartState[i].second==AtLower)*2+(partialStartState[i].second==AtUpper)*3;
+    }
+  }
+
+  int BBSMPSNode::serializePartialStateInfo(int* intVector, std::map< pair< int , int > ,int> &WSMap){
+
+    collectPartialStateInfo(WSMap);
+
+    int ptr=0;
+    for (std::map< pair< int , int > ,int>::iterator it=WSMap.begin(); it!=WSMap.end(); ++it){
+      intVector[ptr]=it->first.first;
+      intVector[ptr+1]=it->first.second;
+      intVector[ptr+2]=it->second;
       ptr+=3;
     }
+   
     return ptr;
   }
 
@@ -398,6 +411,24 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
  
     if(parent!=NULL)nBranchingInfos+=parent->serializeBranchingInfo(&intVector[intPtr],&dblVector[dblPtr]);
     return nBranchingInfos;
+  }
+
+  void BBSMPSNode::printBranchings(std::ostringstream &oss){
+    if (parent!=NULL)parent->printBranchings(oss);
+    for (int i=0; i< branchingInfos.size(); i++){
+      oss<<"{"<<branchingInfos[i].getVarNumber()<<","<<branchingInfos[i].getScenarioNumber()<<","<<branchingInfos[i].getDirection()<<","<<branchingInfos[i].getBound()<<"}";
+  }
+    
+  }
+
+  void BBSMPSNode::printNode(){
+
+    std::ostringstream oss;
+    oss<<"Node=[NN:"<<getNodeNumber()<<":O:"<<getObjective()<<":D:"<<getNodeDepth()<<":BR:";
+    printBranchings(oss);  
+    
+    std::string s = oss.str();
+    cout<<s<<endl;
   }
 
   // //Class variable used to assign node numbers upon instantiation

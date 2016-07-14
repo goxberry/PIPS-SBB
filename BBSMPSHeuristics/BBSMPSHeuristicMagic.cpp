@@ -70,8 +70,8 @@ bool BBSMPSHeuristicMagic::runHeuristic(BBSMPSNode* node, denseBAVector &LPRelax
     //At this point each vector has its own count of first stage locks. Let's reduce
     double *upLock1stStagePtr = upLocks.getFirstStageVec().getPointer();
     double *downLock1stStagePtr = downLocks.getFirstStageVec().getPointer();
-    MPI_Allreduce(MPI_IN_PLACE,upLock1stStagePtr,upLocks.getFirstStageVec().length(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE,downLock1stStagePtr,downLocks.getFirstStageVec().length(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,upLock1stStagePtr,upLocks.getFirstStageVec().length(),MPI_DOUBLE,MPI_SUM,ctx.comm());
+    MPI_Allreduce(MPI_IN_PLACE,downLock1stStagePtr,downLocks.getFirstStageVec().length(),MPI_DOUBLE,MPI_SUM,ctx.comm());
     
 
     for (int c=0; c< firstStageRows ; c++){

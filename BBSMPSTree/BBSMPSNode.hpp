@@ -54,11 +54,6 @@ public:
   // "Rule of 3". (For C++11, follow "Rule of 5".)
   BBSMPSNode& operator=(const BBSMPSNode& sourceNode) {
 
-    /* Diagnostic code: delete when no longer needed */
-    /* Also assumes communicator is MPI_COMM_WORLD. */
-    int mype;
-    MPI_Comm_rank(MPI_COMM_WORLD, &mype);
-
     //    if (0 == mype) cout << "Calling copy assignment operator!\n";
     // Check for self-assignment
     if (this == &sourceNode) {
@@ -137,6 +132,7 @@ void getAllCuttingUids(std::vector<int> &uidVector);
   static void initializeNodeCounter();
 
 int getPartialStateInfoSize();
+void printNode();
 private:
 
   //Class variable used to assign node numbers upon instantiation
@@ -183,9 +179,13 @@ private:
 
   BBSMPSNode(); // Disallow default constructor
 
+  
+  void printBranchings(std::ostringstream &oss);
 protected:
 
-  int serializePartialStateInfo(int* intVector);
+  int collectPartialStateInfo(std::map< pair< int , int > ,int> &WSMap);
+
+  int serializePartialStateInfo(int* intVector, std::map< pair< int , int > ,int> &WSMap);
 
   int serializeBranchingInfo(int *intVector, double *dblVector);
 

@@ -126,7 +126,7 @@ set(CMAKE_BUILD_TYPE RELWITHDEBINFO)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 #IF(CMAKE_COMPILER_IS_GNUCXX)
-#       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+#       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -O3")
 #ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 include_directories(${COINUTILS_INCLUDE_DIRS})
@@ -159,6 +159,7 @@ add_library(pipssbb
 	BBSMPSBranching/BBSMPSBranchingRule.cpp
 	BBSMPSBranching/BBSMPSMaxFracBranchingRule.cpp
 	BBSMPSBranching/BBSMPSPseudoCostBranchingRule.cpp
+	BBSMPSBranching/BBSMPSParallelPseudoCostBranchingRule.cpp
 	BBSMPSUtils/BBSMPSUtils.cpp
 	BBSMPSUtils/BBSMPSLogging.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicsManager.cpp

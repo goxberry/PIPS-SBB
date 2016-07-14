@@ -27,6 +27,7 @@ BBSMPSBranchingInfo::BBSMPSBranchingInfo(int *intVector, double *dblVector)
 		default:
 		  direction='E';
 	}
+	bound=dblVector[0];
 }
 	
 

@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   }
   // Set PIPS logging level.
   
-  BBSMPSLogging::init_logging(1);  
+  BBSMPSLogging::init_logging(3);  
   //PIPSLogging::init_logging(1 ); 
 
   
@@ -62,10 +62,10 @@ int main(int argc, char **argv) {
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Initializing branch-and-bound tree.";
   BBSMPSTree bb(input,nsolvers);
 
-  //bb.loadSimpleHeuristics();
+  bb.loadSimpleHeuristics();
   //bb.loadMIPHeuristics();
-  bb.setTimeLimit(3600);
-  bb.setNodeLimit(50);
+  bb.setTimeLimit(300);
+  //bb.setNodeLimit(50000);
   //bb.loadCuttingPlanes();
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) <<"Calling branch-and-bound.";
   bb.branchAndBound();

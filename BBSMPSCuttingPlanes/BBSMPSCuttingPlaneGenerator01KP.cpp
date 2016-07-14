@@ -112,7 +112,7 @@ BBSMPSCuttingPlaneGenerator01KP::BBSMPSCuttingPlaneGenerator01KP( const char *_n
             totalKnapsackRows+=nSecondStageKnaps;
         }
     }
-    MPI_Allreduce(MPI_IN_PLACE,&totalKnapsackRows,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE,&totalKnapsackRows,1,MPI_INT,MPI_SUM,ctx.comm());
 
     int numCons1= dimsSlacks.inner.numFirstStageCons();
     vector<bool> isKnapsack(numCons1,false);
@@ -953,20 +953,20 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
         if (mype==0){
             valid+=generateFirstStage01KP(row,LPRelaxationSolution,lbRHS,ubRHS,v1,coverLB,coverUB);
         }
-        MPI_Bcast(&valid,1,MPI_INT,0,MPI_COMM_WORLD);
+        MPI_Bcast(&valid,1,MPI_INT,0,ctx.comm());
         //////cout<<"valid "<<valid<<endl;
 
         if(valid){
 
             int nElems=0;
             if (mype==0)nElems=v1.getNumElements();
-            MPI_Bcast(&nElems,1,MPI_INT,0,MPI_COMM_WORLD);
-            MPI_Bcast(&coverLB,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-            MPI_Bcast(&coverUB,1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+            MPI_Bcast(&nElems,1,MPI_INT,0,ctx.comm());
+            MPI_Bcast(&coverLB,1,MPI_DOUBLE,0,ctx.comm());
+            MPI_Bcast(&coverUB,1,MPI_DOUBLE,0,ctx.comm());
             if(mype!=0)v1.setNumElements(nElems);
-            MPI_Bcast(v1.getIndices(),nElems,MPI_INT,0,MPI_COMM_WORLD);
+            MPI_Bcast(v1.getIndices(),nElems,MPI_INT,0,ctx.comm());
             int lastElem=v1.getIndices()[nElems-1];
-            MPI_Bcast(v1.denseVector(),lastElem+1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+            MPI_Bcast(v1.denseVector(),lastElem+1,MPI_DOUBLE,0,ctx.comm());
 
 
             CoinIndexedVector &v1222 = cutExpression.getFirstStageVec().v;
@@ -996,7 +996,7 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
 
             numCons2= kr2.getNumElements();
         }
-        MPI_Allreduce(MPI_IN_PLACE,&numCons2,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+        MPI_Allreduce(MPI_IN_PLACE,&numCons2,1,MPI_INT,MPI_MAX,ctx.comm());
         //////cout<<"NUMCONS "<<numCons2<<endl;
         for (int i=0; i<numCons2; i++){
             
@@ -1022,7 +1022,7 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
                 valid=generateSecondStage01KP(rowT,rowW,LPRelaxationSolution,lbRHS,ubRHS,scen,v1,v2,coverLB,coverUB);
             }
             //////cout<<valid<<endl;
-            MPI_Allreduce(MPI_IN_PLACE,&valid,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+            MPI_Allreduce(MPI_IN_PLACE,&valid,1,MPI_INT,MPI_SUM,ctx.comm());
             if(valid){
 
                 BBSMPSCuttingPlane *plane= new BBSMPSCuttingPlane(coverLB,coverUB,cutExpression);
