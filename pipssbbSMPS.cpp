@@ -63,11 +63,13 @@ int main(int argc, char **argv) {
   BBSMPSTree bb(input,nsolvers);
 
   bb.loadSimpleHeuristics();
+
   //bb.loadMIPHeuristics();
-  bb.setTimeLimit(300);
+  bb.setTimeLimit(600);
   //bb.setNodeLimit(50000);
   //bb.loadCuttingPlanes();
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) <<"Calling branch-and-bound.";
+  bb.runParallelSBInitialization();
   bb.branchAndBound();
 
 

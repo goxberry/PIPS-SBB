@@ -69,7 +69,16 @@ public:
     branchingInfos = sourceNode.branchingInfos;
     nodeNumber=sourceNode.nodeNumber;
     nodeDepth=sourceNode.nodeDepth;
-
+    parent = sourceNode.parent;
+    objectiveValue = sourceNode.objectiveValue;
+    childrenAlive = sourceNode.childrenAlive;
+    branchingInfos = sourceNode.branchingInfos;
+    nodeNumber=sourceNode.nodeNumber;
+    nodeDepth=sourceNode.nodeDepth;
+    procNumber=sourceNode.procNumber;
+    partialStartState=sourceNode.partialStartState;
+    cuttingPlanes=sourceNode.cuttingPlanes;
+    cuttingPlaneUids=sourceNode.cuttingPlaneUids;
 
     // Return existing object for chaining.
     //if (0 == mype) cout << "Exiting copy assignment operator!\n";
@@ -102,23 +111,24 @@ public:
 
   void reconstructWarmStartState(BAFlagVector<variableState> &state);
 
-  void getAllBranchingInformation(std::vector<BBSMPSBranchingInfo> &biVector);
-
   void getAllBranchingInformation(denseBAVector &lb,denseBAVector &ub);
+
+  void getAllBranchingInformation(std::vector<BBSMPSBranchingInfo> &biVector);
 
   void getAllCuttingPlanes(std::vector<BBSMPSCuttingPlane*> &cpVector);
 
   void getParentNodeCuttingPlanes(std::vector<BBSMPSCuttingPlane*> &cpVector);
     
-  void  getGrandParentCuttingPlanes(std::vector<BBSMPSCuttingPlane*> &cpVector);
+  void getGrandParentCuttingPlanes(std::vector<BBSMPSCuttingPlane*> &cpVector);
 
   void getCurrentNodeCuttingPlanes(std::vector<BBSMPSCuttingPlane*> &cpVector);
 
   void copyCuttingPlanes(BBSMPSNode *node);
 
-void getAllCuttingUids(std::vector<int> &uidVector);
+  void getAllCuttingUids(std::vector<int> &uidVector);
 
   void getCurrentNodeCuttingPlaneUids(std::vector<int> &uidVector);
+
   int getNodeNumber() const;
 
   void setNodeDepth(int depth);
@@ -131,8 +141,8 @@ void getAllCuttingUids(std::vector<int> &uidVector);
 
   static void initializeNodeCounter();
 
-int getPartialStateInfoSize();
-void printNode();
+  void printNode();
+
 private:
 
   //Class variable used to assign node numbers upon instantiation
@@ -189,6 +199,7 @@ protected:
 
   int serializeBranchingInfo(int *intVector, double *dblVector);
 
+  int getPartialStateInfoSize();
 
 };
 

@@ -57,9 +57,19 @@
 #include "BBSMPSHeuristicBestRINSJump.hpp"
 #include "BBSMPSHeuristicSolutionPolishing.hpp"
 #include "BBSMPSPseudoCostBranchingRule.hpp"
+#include "BBSMPSParallelPseudoCostBranchingRule.hpp"
 #include "BBSMPSCuttingPlane.hpp"
 #include "BBSMPSCuttingPlaneGenerator01KP.hpp"
 #include "BBSMPSCuttingPlanesManager.hpp"
+
+
+//CONSTANTS FOR NOW:
+
+#define MIN_COMM_ITERS 500
+#define MAX_COMM_ITERS 5000
+
+
+
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus);
 
@@ -154,7 +164,7 @@ void loadLPHeuristic(BBSMPSHeuristic *heur);
 
   void setLB(double lb){ objLB=lb;};
   void setUB(double ub){ objUB=ub;};
-
+  void runParallelSBInitialization();
 
 private:
 
@@ -214,6 +224,9 @@ int	bufferedNodesLeft;
   bool communicationPending;
   bool communicationActivated;
   int iterationsBetweenCommunication;
+
+  double initializationTime;
+  double initializationParallelBranchingCommTime;
   // max-heap data structure with nodes
   // TODO: Refactor to vector<BranchAndBound> & replace w/ make_heap, push_heap, pop_heap
   //std::priority_queue<BBSMPSNode, std::vector<BBSMPSNode>, std::less<BBSMPSNode> > heap; // max-heap

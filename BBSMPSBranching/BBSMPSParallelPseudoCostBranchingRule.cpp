@@ -3,7 +3,7 @@
 using namespace std;
 
 struct doubleint { double d; int i;};
-double scoreFunction(double qminus, double qplus, double mu){
+double scoreFn(double qminus, double qplus, double mu){
   double scoreval=(1-mu)*min(qminus,qplus)+(mu)*max(qminus,qplus);
 	return scoreval;
 }
@@ -83,7 +83,7 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfFirstStageInitializati
   int BBSMPSProcs=BBSMPSContext.nprocs();
   int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
   PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
-    
+   // cout<<"performing round of initializations 1st stage "<<endl;
     rootSolver.setStates(warmstart);
     bool foundAtLeastOne=false;
 
@@ -91,11 +91,16 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfFirstStageInitializati
 	  //Fix variables
      for (int col = 0; col < input.nFirstStageVars(); col++)
      {  
+      //  cout<<col<<" "<<sol.getVec(-1)[col]<<" "<<downBranchingHistory.getVec(-1)[col]<<" "<<upBranchingHistory.getVec(-1)[col]<<" "<<input.isFirstStageColInteger(col) <<" "<<! isIntFeas(sol.getVec(-1)[col],intTol)<<" "<<(downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)<<endl;
         if(input.isFirstStageColInteger(col) && ! isIntFeas(sol.getVec(-1)[col],intTol) && (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)){
           itemsToDo.push_back(col);
         }
         foundAtLeastOne=foundAtLeastOne || (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor);
      }
+   //  cout<<"ITEMS TO DO SIZES ARE "<<itemsToDo.size()<<endl;
+   //  for(int i=0; i< itemsToDo.size(); i++) cout<<itemsToDo[i];
+   //   cout<<endl;
+     if (itemsToDo.size()==0)return foundAtLeastOne;
      int chunkSize=itemsToDo.size()/BBSMPSProcs;
      int reminder=itemsToDo.size()-chunkSize*BBSMPSProcs;
      int myStart=BBSMPSMyPe*chunkSize;
@@ -108,6 +113,7 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfFirstStageInitializati
         myStart+=reminder;
         myEnd+=reminder;
       }
+  //    cout<<"My start and ends are "<<myStart<<" "<<myEnd<<" total number of items "<<itemsToDo.size()<<endl;
       for (int i=myStart; i< myEnd; i++){
         int col =itemsToDo[i];
         if(input.isFirstStageColInteger(col) && ! isIntFeas(sol.getVec(-1)[col],intTol) && (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)){
@@ -134,19 +140,31 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfFirstStageInitializati
         displs[proc]=displs[proc-1]+recvCounts[proc-1];
 
       }
+      else{
+        displs[proc]=firstCol;
+      }
+
       
       recvCounts[proc]=lastCol-firstCol+1;
 
      }
-     
     
+  //   cout<<" revcounts "<<recvCounts[0]<<" "<<recvCounts[1]<<endl;
+ //    cout<<" displs "<<displs[0]<<" "<<displs[1]<<endl;
+     
+    double timStart=MPI_Wtime();
      //Exchange values
      MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upPseudoCost.getVec(-1)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
      MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downPseudoCost.getVec(-1)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
      MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upBranchingHistory.getVec(-1)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
      MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downBranchingHistory.getVec(-1)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-
-
+     communicationTime+=MPI_Wtime()-timStart;
+  //   cout<<"we finished communication"<<endl;
+  //    for (int col = 0; col < input.nFirstStageVars(); col++)
+  //   { 
+ //       cout<<" "<<col<<":"<<upBranchingHistory.getVec(-1)[col]<<" "<<downBranchingHistory.getVec(-1)[col];
+ //     }
+ //     cout<<endl;
     return foundAtLeastOne;
 
 
@@ -161,7 +179,7 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfSecondStageInitializat
   int BBSMPSProcs=BBSMPSContext.nprocs();
   int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
   PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
-    
+//    cout<<"performing round of initializations 2st stage "<<endl;
     
     rootSolver.setStates(warmstart);
     bool foundAtLeastOne=false;
@@ -172,6 +190,7 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfSecondStageInitializat
     
     for (int scen = 0; scen < input.nScenarios(); scen++)
     {
+   //   cout<<" processor  got into scen "<<scen<<endl;
       vector<int> itemsToDo;
 
      	int owner=-1;
@@ -200,53 +219,69 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfSecondStageInitializat
           myStart+=reminder;
           myEnd+=reminder;
         }
+     //   cout<<"My start and ends are "<<myStart<<" "<<myEnd<<" total number of items "<<itemsToDo.size()<<endl;
         int nItemsToDo=myEnd-myStart;
         MPI_Bcast( &nItemsToDo, 1, MPI_INT, sharedOwner, ctx.comm());
-        for (int i=myStart; i< myEnd; i++){
-          int col =itemsToDo[i];
-          initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, col);
+        if (itemsToDo.size()!=0){
+          for (int i=myStart; i< myEnd; i++){
+            int col =itemsToDo[i];
+            initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, col);
 
-        }
+          }
 
-        vector<int> recvCounts(BBSMPSProcs,0);
-       vector<int> displs(BBSMPSProcs,0);
-       for (int proc=0; proc<BBSMPSProcs; proc ++){
-        int procStart=proc*chunkSize;
-        int procEnd=procStart+chunkSize;
-        if (proc<reminder){
-          procStart+=proc;
-          procEnd+=proc+1;
-        }
-        else{
-          procStart+=reminder;
-          procEnd+=reminder;
-        }
-        int firstCol=itemsToDo[procStart];//these we own
-        int lastCol=itemsToDo[procEnd-1];
-        if (proc!=0){
-          firstCol=itemsToDo[procStart-1]+1;
-          displs[proc]=displs[proc-1]+recvCounts[proc-1];
+          vector<int> recvCounts(BBSMPSProcs,0);
+         vector<int> displs(BBSMPSProcs,0);
+         for (int proc=0; proc<BBSMPSProcs; proc ++){
+          int procStart=proc*chunkSize;
+          int procEnd=procStart+chunkSize;
+          if (proc<reminder){
+            procStart+=proc;
+            procEnd+=proc+1;
+          }
+          else{
+            procStart+=reminder;
+            procEnd+=reminder;
+          }
+          int firstCol=itemsToDo[procStart];//these we own
+          int lastCol=itemsToDo[procEnd-1];
+          if (proc!=0){
+            firstCol=itemsToDo[procStart-1]+1;
+            displs[proc]=displs[proc-1]+recvCounts[proc-1];
 
-        }
-        
-        recvCounts[proc]=lastCol-firstCol+1;
+          }
+          else{
+            displs[proc]=firstCol;
+          }
+          recvCounts[proc]=lastCol-firstCol+1;
 
-       }
-         //Exchange values
-         MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upPseudoCost.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-         MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downPseudoCost.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-         MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upBranchingHistory.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-         MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downBranchingHistory.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-        
+         }
+   //       cout<<" revcounts "<<recvCounts[0]<<" "<<recvCounts[1]<<endl;
+  //   cout<<" displs "<<displs[0]<<" "<<displs[1]<<endl;
+          double timStart=MPI_Wtime();
+           //Exchange values
+           MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upPseudoCost.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
+           MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downPseudoCost.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
+           MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upBranchingHistory.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
+           MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downBranchingHistory.getVec(scen)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
+           communicationTime+=MPI_Wtime()-timStart;
+          }
+    //       cout<<"we finished communication"<<endl;
+  //    for (int col = 0; col < input.nFirstStageVars(); col++)
+  //   { 
+ //       cout<<" "<<col<<":"<<upBranchingHistory.getVec(scen)[col]<<" "<<downBranchingHistory.getVec(scen)[col];
+  //    }
+    //  cout<<endl;
+
       }
       else{
         int nItemsToDo;
         MPI_Bcast( &nItemsToDo, 1, MPI_INT, sharedOwner, ctx.comm());
-        for (int i=0; i< nItemsToDo; i++){
-          initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, -1);
-          foundAtLeastOne=1;
+        if (nItemsToDo!=0){
+          for (int i=0; i< nItemsToDo; i++){
+            initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, -1);
+            foundAtLeastOne=1;
+          }
         }
-
       }
 
 
@@ -261,7 +296,7 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfSecondStageInitializat
 
 
 BBSMPSParallelPseudoCostBranchingRule::BBSMPSParallelPseudoCostBranchingRule(int priority): BBSMPSBranchingRule(priority){
-	name="Max Fractional Branching Rule";
+	name="Parallel PseudoCost Branching Rule";
     const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
     BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
     BAFlagVector<variableState> warmstart(BBSMPSSolver::instance()->getOriginalWarmStart());
@@ -280,12 +315,12 @@ BBSMPSParallelPseudoCostBranchingRule::BBSMPSParallelPseudoCostBranchingRule(int
     denseBAVector sol(BBSMPSSolver::instance()->getLPRelaxation());
     denseBAVector lb(BBSMPSSolver::instance()->getOriginalLB());
     denseBAVector ub(BBSMPSSolver::instance()->getOriginalUB());
-
+    communicationTime=0;
      
     double lpRelaxationObjValue=BBSMPSSolver::instance()->getLPRelaxationObjectiveValue();
-
+ //   cout<<"started the init"<<endl;
    	performRoundOfFirstStageInitializations(sol,warmstart,lb,ub, lpRelaxationObjValue);
-     
+//      cout<<"finisihed the init"<<endl;
 
    
   };
@@ -330,8 +365,8 @@ for (col = 0; col < input.nFirstStageVars(); col++)
 		double downTimes=downBranchingHistory.getFirstStageVec()[col];
 		double upTimes=downBranchingHistory.getFirstStageVec()[col];
 		
-		double score=scoreFunction((downPseudoCost.getFirstStageVec()[col]/downTimes)*downDiff, (upPseudoCost.getFirstStageVec()[col]/upTimes)*upDiff, 0.1667);
-	 	
+		double score=scoreFn((downPseudoCost.getFirstStageVec()[col]/downTimes)*downDiff, (upPseudoCost.getFirstStageVec()[col]/upTimes)*upDiff, 0.1667);
+  	 
     if (score > maxScore)  {
 			maxCol = col;
 			maxScore = score;
@@ -403,7 +438,7 @@ for (col = 0; col < input.nSecondStageVars(scen); col++)
 		double upTimes=downBranchingHistory.getSecondStageVec(scen)[col];
 		
 	
-		double score=scoreFunction((downPseudoCost.getSecondStageVec(scen)[col]/downTimes)*downDiff, (upPseudoCost.getSecondStageVec(scen)[col]/upTimes)*upDiff, 0.1667);
+		double score=scoreFn((downPseudoCost.getSecondStageVec(scen)[col]/downTimes)*downDiff, (upPseudoCost.getSecondStageVec(scen)[col]/upTimes)*upDiff, 0.1667);
 	
 	 	if (score > maxScore)  {
 			maxCol = col;
@@ -450,7 +485,7 @@ for (int scen = 0; scen < input.nScenarios(); scen++)
 			double upTimes=downBranchingHistory.getSecondStageVec(scen)[col];
 		
 	
-			double score=scoreFunction((downPseudoCost.getSecondStageVec(scen)[col]/downTimes)*downDiff, (upPseudoCost.getSecondStageVec(scen)[col]/upTimes)*upDiff, 0.1667);
+			double score=scoreFn((downPseudoCost.getSecondStageVec(scen)[col]/downTimes)*downDiff, (upPseudoCost.getSecondStageVec(scen)[col]/upTimes)*upDiff, 0.1667);
 			
 			if (score>maxScore){
 				maxScore=score;
@@ -491,8 +526,10 @@ bool BBSMPSParallelPseudoCostBranchingRule::branch(BBSMPSNode * node, std::vecto
 // Decide which stage to branch on:
 // If first stage decision variables not integer feasible,
 // branch on a first stage variable, go to start of loop
-timesCalled++;
+  BAContext BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
 
+timesCalled++;
+//cout<<" LAUNCHING BRANCHING RULE "<<endl;
 SMPSInput &input= BBSMPSSolver::instance()->getSMPSInput();
 BAContext &ctx= BBSMPSSolver::instance()->getBAContext();
 int mype=BBSMPSSolver::instance()->getMype();

@@ -24,7 +24,7 @@ public:
    	
    	BBSMPSParallelPseudoCostBranchingRule(int priority);
 
-
+    double getCommunicationTime(){return communicationTime;}
 private:
 
 	// Auxiliary functions for branching
@@ -51,6 +51,7 @@ private:
 
     bool performRoundOfSecondStageInitializations(const denseBAVector &nodeRelaxation,BAFlagVector<variableState> &warmstart, denseBAVector &lb, denseBAVector &ub, double lpRelaxationObjValue);
 
+
     denseBAVector downPseudoCost;
     denseBAVector upPseudoCost;
     denseBAVector downBranchingHistory;
@@ -58,6 +59,7 @@ private:
     bool everythingFirstStageInitialized;
     bool everythingSecondStageInitialized;
     int reliabilityFactor;
+    double communicationTime;
 
 };
 

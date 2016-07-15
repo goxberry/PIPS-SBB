@@ -37,4 +37,5 @@ void BBSMPSBranchingRuleManager::freeResources(){
 		BBSMPSBranchingRule *br=(*it);
 		delete br;
 	}
+	branchingRuleList.clear();
 }

@@ -31,6 +31,7 @@ nodeNumber(sourceNode.nodeNumber),
 nodeDepth(sourceNode.nodeDepth),
 procNumber(sourceNode.procNumber) {
 }
+
 BBSMPSNode::BBSMPSNode(BBSMPSNode* parent_ptr, std::vector<BBSMPSBranchingInfo>& bInfos, int procOfOrigin){
 
   
@@ -87,7 +88,6 @@ BBSMPSNode::BBSMPSNode(int *intVector, double *dblVector){
     intPtr+=intSerialSize;
     dblPtr+=dblSerialSize;
   }
-  //cout<<" just created a node with "<<objectiveValue<<" node num "<<nodeNumber<<" prc n "<<procNumber<< " depth "<<nodeDepth<<" npartWS "<<partialStartState.size()<<" binfos "<<branchingInfos.size()<<endl;
 }
 
 BBSMPSNode::~BBSMPSNode(){
@@ -120,22 +120,17 @@ BBSMPSNode* BBSMPSNode::getParentPtr(){
   return parent;
 }
 
-
-
 void BBSMPSNode::setObjective(double lb){
   objectiveValue=lb;
 }
-
 
 void BBSMPSNode::addBranchingInformation(BBSMPSBranchingInfo& bi){
   branchingInfos.push_back(bi);
 }
 
-
 void BBSMPSNode::auxCopyAllBranchingInformation(std::vector<BBSMPSBranchingInfo> &biVector){
   if (parent!=NULL)parent->auxCopyAllBranchingInformation(biVector);
   if (branchingInfos.size()>0)  {
-   
     biVector.insert(biVector.end(),branchingInfos.begin(), branchingInfos.end());
   }
   
@@ -181,16 +176,11 @@ void BBSMPSNode::setIncrementalWarmStartState(std::vector< std::pair < BAIndex, 
 
 
 void BBSMPSNode::reconstructWarmStartState(BAFlagVector<variableState> &state){
-
   if (parent!=NULL) parent->reconstructWarmStartState(state);
   for (int i=0; i< partialStartState.size(); i++){
-   // if (state.getVec(partialStartState[i].first.scen).length()<=partialStartState[i].first.idx) std::cout<<"Updating "<<partialStartState[i].first.scen<<" "<<partialStartState[i].first.idx<<" with "<<partialStartState[i].second<<" limit "<<state.getVec(partialStartState[i].first.scen).length()<<endl;
     state.getVec(partialStartState[i].first.scen)[partialStartState[i].first.idx]=partialStartState[i].second;
   }
- // cout<<"we got out "<<endl;
 }
-
-
 
 
 int BBSMPSNode::getBranchingInfoSize(){
@@ -338,7 +328,6 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
 
     intVectorSize=5+branchingInfoSize*intBranchSerialSize+nWSs*3;
     dblVectorSize=1+branchingInfoSize*dblBranchSerialSize;
-   // cout<<" int and dbl sizes "<<intVectorSize<<" "<<dblVectorSize<<endl;
   }
 
   void BBSMPSNode::serialize(int *intVector, double *dblVector){
@@ -366,7 +355,6 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
     int ptrAfterWS=serializePartialStateInfo(&intVector[5],WSMap);
     intVector[3]=WSMap.size();
     serializeBranchingInfo(&intVector[5+ptrAfterWS],&dblVector[1]);
-   // cout<<"serializing node "<<nodeNumber<<" "<<procNumber<<" "<<nodeDepth<<" "<<nWSs<<" "<<branchingInfoSize<<endl;
   }
 
   int BBSMPSNode::collectPartialStateInfo(std::map< pair< int , int > ,int> &WSMap){
@@ -431,45 +419,4 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
     cout<<s<<endl;
   }
 
-  // //Class variable used to assign node numbers upon instantiation
-  // static int nodeCounter;
-
-  // int nodeNumber;
-
-  // //Depth of the node within the BB tree
-  // int nodeDepth;
-
-  // //Pointer to the node's parent
-  // BBSMPSNode *parent;
-
-  // //Child reference counter
-  // int childrenAlive;
-
-  // //Incremental branching information relative to this node
-  // std::vector<BBSMPSBranchingInfo> branchingInfos;
-
-
-  // // variable states for warm start information; each index is
-  // // one of {Basic, AtLower, AtUpper}
-
-  // std::vector< std::pair < BAIndex, variableState > > partialStartState;
-
-  // // objective function of the actual node (not its parent)
-  // double objectiveValue; 
-
-
-  // //Incremental cutting plane information relative to this node
-  // std::vector<BBSMPSCuttingPlane*> cuttingPlanes;
-  // vector<int> cuttingPlaneUids;
-  // // TODO: Local cut objects; Global cuts are stored in the B&B tree.
-
-  // void auxCopyAllBranchingInformation(std::vector<BBSMPSBranchingInfo> &biVector);
-
-  // void auxCopyAllCuttingPlaneInformation(std::vector<BBSMPSCuttingPlane*> &cpVector);
-
-  // int getBranchingInfoSize();
-
-  // int getNumberOfCuttingPlanes();
-
-
-  // BBSMPSNode(); // Disallow default constructor
+  
