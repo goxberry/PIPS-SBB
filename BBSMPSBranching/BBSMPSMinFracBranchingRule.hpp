@@ -1,28 +1,30 @@
 // ----------------------------------------------------------------------------
 /**
-   File: BBSMPSMaxFracBranchingRule.hpp
+   File: BBSMPSMinFracBranchingRule.hpp
 
-   Description: Branching rule that branches on the maximum fractional variable first. 
+   Description: Branching rule that branches on the minimum fractional variable first. 
 
 
 */ 
 // ----------------------------------------------------------------------------
 
-#ifndef BBSMPSMAXFRACBRANCHINGRULE_H
-#define BBSMPSMAXFRACBRANCHINGRULE_H
+#ifndef BBSMPSMINFRACBRANCHINGRULE_H
+#define BBSMPSMINFRACBRANCHINGRULE_H
 
 #include "BBSMPSBranchingRule.hpp"
 #include "BBSMPSUtils.hpp"
 #include "BBSMPSSolver.hpp"
 #include "BBSMPSLogging.hpp"
 
-class BBSMPSMaxFracBranchingRule: public BBSMPSBranchingRule {
+
+
+class BBSMPSMinFracBranchingRule: public BBSMPSBranchingRule {
 
 public:
 
    	virtual bool branch(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes, const denseBAVector& primalSoln);
    	
-   	BBSMPSMaxFracBranchingRule(int priority): BBSMPSBranchingRule(priority){name="Max Fractional Branching Rule";};
+   	BBSMPSMinFracBranchingRule(int priority): BBSMPSBranchingRule(priority){name="Min Fractional Branching Rule";};
 
 
 private:
@@ -30,12 +32,11 @@ private:
 	// Auxiliary functions for branching
    	int getFirstStageMinIntInfeasCol( const denseBAVector& primalSoln,  SMPSInput& input);
 
-   	int getFirstStageMaxFint( const denseBAVector& primalSoln,  SMPSInput& input) ;
+   	int getFirstStageMinFint( const denseBAVector& primalSoln,  SMPSInput& input) ;
 
-   	int getFirstStageMaxFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input);
+   	int getFirstStageMinFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input);
 
-      int getSecondStageMaxFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input, int scen);
-
+      int getSecondStageMinFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input, int scen);
 
 
 	// NOTE: MPI standard requires passing ints, not bools

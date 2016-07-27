@@ -158,6 +158,9 @@ add_library(pipssbb
 	BBSMPSBranching/BBSMPSBranchingRuleManager.cpp
 	BBSMPSBranching/BBSMPSBranchingRule.cpp
 	BBSMPSBranching/BBSMPSMaxFracBranchingRule.cpp
+	BBSMPSBranching/BBSMPSMinFracBranchingRule.cpp
+	BBSMPSBranching/BBSMPSMaxFracSmallestScenarioFirstBranchingRule.cpp
+	BBSMPSBranching/BBSMPSMinFracSmallestScenarioFirstBranchingRule.cpp
 	BBSMPSBranching/BBSMPSPseudoCostBranchingRule.cpp
 	BBSMPSBranching/BBSMPSParallelPseudoCostBranchingRule.cpp
 	BBSMPSUtils/BBSMPSUtils.cpp

@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Initializing branch-and-bound tree.";
   BBSMPSTree bb(input,nsolvers);
 
-  //bb.loadSimpleHeuristics();
+  bb.loadSimpleHeuristics();
 
   //bb.loadMIPHeuristics();
   bb.setTimeLimit(3600);

@@ -17,6 +17,13 @@
 #include "BBSMPSLogging.hpp"
 #include "BAData.hpp"
 
+typedef struct comp
+{
+  double result;
+  int rank;
+} comp;
+
+
 class BBSMPSBranchingRule {
 
 public:
@@ -32,6 +39,7 @@ private:
 protected:
 	int timesCalled;
 	int timesSuccessful;
+	double accumulatedRunTime;
 	std::string name;
 
 

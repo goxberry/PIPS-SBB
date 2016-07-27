@@ -167,9 +167,12 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
    //BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
    //branchingRuleManager.addBranchingRule(mfbr);
 
+   
+   BBSMPSMinFracBranchingRule *mfbr= new BBSMPSMinFracBranchingRule(10);
+   branchingRuleManager.addBranchingRule(mfbr);
 
-    BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
-  	  branchingRuleManager.addBranchingRule(mfbr2);
+    //BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
+  	//  branchingRuleManager.addBranchingRule(mfbr2);
 
     bbIterationCounter=0;
     nodesFathomed=0;
@@ -424,7 +427,7 @@ void BBSMPSTree::runParallelSBInitialization(){
 	//cout<<"ABOUT TO START "<<heap.size()<<endl;
 	/* While heap not empty and there are still nodes in tree */
 	// TODO: Add tolerance on optimality gap, time limit option.
-	while (heap.size()<1000) {
+	while (heap.size()<2000) {
 		
 		int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 		//cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
@@ -742,12 +745,20 @@ void BBSMPSTree::runParallelSBInitialization(){
 	initializationParallelBranchingCommTime=ppcbr->getCommunicationTime();
 	branchingRuleManager.freeResources();
 
-     BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
-    branchingRuleManager.addBranchingRule(mfbr);
+    //  BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
+    // branchingRuleManager.addBranchingRule(mfbr);
 
-    //BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
-   //mfbr2->setCostHistory(v1,v2,v3,v4);
-  	 // branchingRuleManager.addBranchingRule(mfbr2);
+    BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
+   mfbr2->setCostHistory(v1,v2,v3,v4);
+  	  branchingRuleManager.addBranchingRule(mfbr2);
+ //      BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
+ //  branchingRuleManager.addBranchingRule(mfbr);
+
+    //  BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10);
+   // branchingRuleManager.addBranchingRule(mfbr);
+
+ //       BBSMPSMinFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMinFracSmallestScenarioFirstBranchingRule(10);
+   //branchingRuleManager.addBranchingRule(mfbr);
   	  initializationTime=MPI_Wtime()-beginningTime;
 
 }
@@ -777,7 +788,8 @@ void BBSMPSTree::runParallelSBInitialization(){
 
 
 void BBSMPSTree::branchAndBound() {
-
+	 BAContext &BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
+int BBSMPSProcs=BBSMPSContext.nprocs();
 	int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
    if (BBSMPSMyPe!=0){
    	objLB=COIN_DBL_MAX;
@@ -800,7 +812,7 @@ void BBSMPSTree::branchAndBound() {
 		
 		
 		//cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
-		if(!communicationActivated){
+		if(!communicationActivated || BBSMPSProcs==1){
 			checkSequentialTerminationConditions();
 		}
 		else {
@@ -1722,7 +1734,7 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 				iterationsBetweenCommunication/=1.5;
 				iterationsBetweenCommunication=max(iterationsBetweenCommunication,MIN_COMM_ITERS);
 				if (generalGap<0.05)iterationsBetweenCommunication=RAMPDOWN_COMM_ITERS;
-				cout<<"ITERATIONS SET TO "<<iterationsBetweenCommunication<<" "<<bufferedBestLB-bufferedWorstLB<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(bufferedWorstLB - compTol)<<" "<<objUB<<" "<<generalGap<<endl;
+				//cout<<"ITERATIONS SET TO "<<iterationsBetweenCommunication<<" "<<bufferedBestLB-bufferedWorstLB<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(bufferedWorstLB - compTol)<<" "<<objUB<<" "<<generalGap<<endl;
 				return true;
 			}
 			else{
@@ -1730,7 +1742,7 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 				iterationsBetweenCommunication*=1.5;
 				iterationsBetweenCommunication=min(iterationsBetweenCommunication,MAX_COMM_ITERS);
 				if (generalGap<0.05)iterationsBetweenCommunication=RAMPDOWN_COMM_ITERS;
-				cout<<"ITERATIONS SET TO "<<iterationsBetweenCommunication<<" "<<bufferedBestLB-bufferedWorstLB<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(bufferedWorstLB - compTol)<<" "<<objUB<<" "<<generalGap<<endl;
+				//cout<<"ITERATIONS SET TO "<<iterationsBetweenCommunication<<" "<<bufferedBestLB-bufferedWorstLB<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(bufferedWorstLB - compTol)<<" "<<objUB<<" "<<generalGap<<endl;
 			}
 		}
 

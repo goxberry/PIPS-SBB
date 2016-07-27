@@ -6,7 +6,7 @@ BBSMPSBranchingRule::BBSMPSBranchingRule(int _priority){
 	priority=_priority;
     timesCalled=0;
 	timesSuccessful=0;
-
+	accumulatedRunTime=0;
 }
 
 BBSMPSBranchingRule::~BBSMPSBranchingRule(){

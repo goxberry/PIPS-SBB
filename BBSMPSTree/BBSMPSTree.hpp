@@ -38,6 +38,9 @@
 
 
 #include "BBSMPSMaxFracBranchingRule.hpp"
+#include "BBSMPSMinFracBranchingRule.hpp"
+#include "BBSMPSMaxFracSmallestScenarioFirstBranchingRule.hpp"
+#include "BBSMPSMinFracSmallestScenarioFirstBranchingRule.hpp"
 #include "BBSMPSBranchingRuleManager.hpp"
 #include "BBSMPSHeuristicsManager.hpp"
 #include "BBSMPSHeuristicRounding.hpp"
@@ -65,9 +68,9 @@
 
 //CONSTANTS FOR NOW:
 
-#define MIN_COMM_ITERS 1000
+#define MIN_COMM_ITERS 50
 #define MAX_COMM_ITERS 5000
-#define RAMPDOWN_COMM_ITERS 5
+#define RAMPDOWN_COMM_ITERS 50
 
 
 // Outputs solver status:

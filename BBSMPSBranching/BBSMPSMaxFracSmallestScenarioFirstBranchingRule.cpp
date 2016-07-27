@@ -1,7 +1,7 @@
-#include "BBSMPSMaxFracBranchingRule.hpp"
+#include "BBSMPSMaxFracSmallestScenarioFirstBranchingRule.hpp"
 
 using namespace std;
-int BBSMPSMaxFracBranchingRule::getFirstStageMinIntInfeasCol( const denseBAVector& primalSoln,  SMPSInput& input) {
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::getFirstStageMinIntInfeasCol( const denseBAVector& primalSoln,  SMPSInput& input) {
 	int col;
 
     // Return first index of integer variable with fractional value
@@ -21,7 +21,7 @@ int BBSMPSMaxFracBranchingRule::getFirstStageMinIntInfeasCol( const denseBAVecto
 }
 
 
-int BBSMPSMaxFracBranchingRule::getFirstStageMaxFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input){
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::getFirstStageMaxFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input){
 	int col;
 
 	double maxFracPart = 0;
@@ -45,12 +45,12 @@ int BBSMPSMaxFracBranchingRule::getFirstStageMaxFracPartCol( const denseBAVector
 }
 
 	// NOTE: MPI standard requires passing ints, not bools
-int BBSMPSMaxFracBranchingRule::isFirstStageIntFeas( const denseBAVector& primalSoln,  SMPSInput& input) {
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::isFirstStageIntFeas( const denseBAVector& primalSoln,  SMPSInput& input) {
 	return (getFirstStageMinIntInfeasCol(primalSoln,input) == -1);
 }
 
 
-void BBSMPSMaxFracBranchingRule::branchOnFirstStage(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes, const denseBAVector& primalSoln,  SMPSInput& input) {
+void BBSMPSMaxFracSmallestScenarioFirstBranchingRule::branchOnFirstStage(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes, const denseBAVector& primalSoln,  SMPSInput& input) {
 
 	int mype=BBSMPSSolver::instance()->getMype();
     /* Branching Rule */
@@ -77,7 +77,7 @@ void BBSMPSMaxFracBranchingRule::branchOnFirstStage(BBSMPSNode * node, std::vect
 
 }
 
-int BBSMPSMaxFracBranchingRule::getSecondStageMaxFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input, int scen){
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::getSecondStageMaxFracPartCol( const denseBAVector& primalSoln,  SMPSInput& input, int scen){
 	int col;
 
 	double maxFracPart = 0;
@@ -101,7 +101,7 @@ int BBSMPSMaxFracBranchingRule::getSecondStageMaxFracPartCol( const denseBAVecto
 }
 
 
-int BBSMPSMaxFracBranchingRule::getSecondStageMinIntInfeasCol( const denseBAVector& primalSoln, int scen,   SMPSInput& input) {
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::getSecondStageMinIntInfeasCol( const denseBAVector& primalSoln, int scen,   SMPSInput& input) {
 	
 	int col;
 	for (col = 0; col < input.nSecondStageVars(scen); col++)
@@ -119,41 +119,53 @@ int BBSMPSMaxFracBranchingRule::getSecondStageMinIntInfeasCol( const denseBAVect
 }
 
 
-int BBSMPSMaxFracBranchingRule::isSecondStageIntFeas( const denseBAVector& primalSoln, int scen, SMPSInput & input) {
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::isSecondStageIntFeas( const denseBAVector& primalSoln, int scen, SMPSInput & input) {
 	return (getSecondStageMinIntInfeasCol(primalSoln, scen, input) == -1);
 }
 
-void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes,  const denseBAVector& primalSoln,  SMPSInput& input,BAContext &ctx, int mype) {
+int BBSMPSMaxFracSmallestScenarioFirstBranchingRule::getNSecondStageFracVars( const denseBAVector& primalSoln,  SMPSInput& input, int scen){
+	int col;
+
+	int counter=0;
+
+    // Return index of integer variable with largest fractional part
+	for (col = 0; col < input.nSecondStageVars(scen); col++)
+	{
+		bool isColInteger = input.isSecondStageColInteger(scen, col);
+		bool isValInteger = isIntFeas(primalSoln.getSecondStageVec(scen)[col], intTol);
+
+		counter+=(isColInteger && !isValInteger);
+	}
+
+	return counter;
+
+}
 
 
-   
+void BBSMPSMaxFracSmallestScenarioFirstBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes,  const denseBAVector& primalSoln,  SMPSInput& input,BAContext &ctx, int mype) {
 
-	int branchCol=-1;
-	int branchScen=-1;
-	double savedColFracPart=COIN_DBL_MIN;
-    for (int scen = 0; scen < input.nScenarios(); scen++)
+
+	//Find out who has the best scenario
+	int bestLocalScen=-1;
+	double bestLocalScenarioSize=COIN_DBL_MAX;
+
+	for (int scen = 0; scen < input.nScenarios(); scen++)
 	{
 		if(ctx.assignedScenario(scen)) {
-			int localBestCol=getSecondStageMaxFracPartCol( primalSoln,input, scen);
-			if (localBestCol!=-1){
-				double colFracPart = fracPart(primalSoln.getSecondStageVec(scen)[localBestCol]);
-				if (colFracPart>savedColFracPart){
-					branchCol=localBestCol;
-					branchScen=scen;
-					savedColFracPart=colFracPart;
-				}
+			int scenFracVars=getNSecondStageFracVars (primalSoln,input, scen);
+			if (scenFracVars!=0 && bestLocalScenarioSize> scenFracVars){
+				bestLocalScen=scen;
+				bestLocalScenarioSize=scenFracVars;
 			}
-			
 		}
 	}
 
 	comp localComp;
     comp globalComp;
 
-    localComp.result=savedColFracPart;
+    localComp.result=bestLocalScenarioSize;
     localComp.rank=mype;
-    MPI_Allreduce (&localComp, &globalComp, 1, MPI_DOUBLE_INT, MPI_MAXLOC, ctx.comm());
-
+    MPI_Allreduce (&localComp, &globalComp, 1, MPI_DOUBLE_INT, MPI_MINLOC, ctx.comm());
 
 
     // Then, for that scenario number, get the minimal index of
@@ -162,13 +174,13 @@ void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vec
 	std::vector<BBSMPSBranchingInfo> bInfosRightKid;
 
 	if(globalComp.rank==mype) {
-
+		int localBestCol=getSecondStageMaxFracPartCol( primalSoln,input, bestLocalScen);
 		
-		BBSMPS_ALG_LOG_SEV(info) << "Processor " << mype << " will branch on variable "<<branchCol<<" of second stage scenario "
-	<< branchScen << " "<<primalSoln.getSecondStageVec(branchScen)[branchCol]<<".";
+		BBSMPS_ALG_LOG_SEV(info) << "Processor " << mype << " will branch on variable "<<localBestCol<<" of second stage scenario "
+	<< bestLocalScen << " "<<primalSoln.getSecondStageVec(bestLocalScen)[localBestCol]<<".";
 
-		bInfosLeftKid.push_back( BBSMPSBranchingInfo(branchCol, ceil(primalSoln.getSecondStageVec(branchScen)[branchCol]), 'L', 2,branchScen));
-		bInfosRightKid.push_back( BBSMPSBranchingInfo(branchCol, floor(primalSoln.getSecondStageVec(branchScen)[branchCol]), 'U', 2,branchScen));
+		bInfosLeftKid.push_back( BBSMPSBranchingInfo(localBestCol, ceil(primalSoln.getSecondStageVec(bestLocalScen)[localBestCol]), 'L', 2,bestLocalScen));
+		bInfosRightKid.push_back( BBSMPSBranchingInfo(localBestCol, floor(primalSoln.getSecondStageVec(bestLocalScen)[localBestCol]), 'U', 2,bestLocalScen));
 	}
 
 
@@ -181,7 +193,7 @@ void BBSMPSMaxFracBranchingRule::branchOnSecondStage(BBSMPSNode * node, std::vec
 }
 
 
-bool BBSMPSMaxFracBranchingRule::branch(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes,  const denseBAVector& primalSoln){
+bool BBSMPSMaxFracSmallestScenarioFirstBranchingRule::branch(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes,  const denseBAVector& primalSoln){
 	/* Branching */
 	// Decide which stage to branch on:
 	// If first stage decision variables not integer feasible,
