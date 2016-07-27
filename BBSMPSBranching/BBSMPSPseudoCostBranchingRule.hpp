@@ -24,6 +24,19 @@ public:
    	
    	BBSMPSPseudoCostBranchingRule(int priority);
 
+    void getCostHistory(denseBAVector &_downPseudoCost,denseBAVector &_upPseudoCost,denseBAVector &_downBranchingHistory,denseBAVector &_upBranchingHistory){
+      _downPseudoCost=downPseudoCost;
+      _upPseudoCost=upPseudoCost;
+      _downBranchingHistory=downBranchingHistory;
+      _upBranchingHistory=upBranchingHistory;
+    }
+
+    void setCostHistory(denseBAVector &_downPseudoCost,denseBAVector &_upPseudoCost,denseBAVector &_downBranchingHistory,denseBAVector &_upBranchingHistory){
+      downPseudoCost=_downPseudoCost;
+      upPseudoCost=_upPseudoCost;
+      downBranchingHistory=_downBranchingHistory;
+      upBranchingHistory=_upBranchingHistory;
+    }
 
 private:
 

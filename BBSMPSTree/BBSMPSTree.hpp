@@ -65,9 +65,9 @@
 
 //CONSTANTS FOR NOW:
 
-#define MIN_COMM_ITERS 500
+#define MIN_COMM_ITERS 1000
 #define MAX_COMM_ITERS 5000
-
+#define RAMPDOWN_COMM_ITERS 5
 
 
 // Outputs solver status:

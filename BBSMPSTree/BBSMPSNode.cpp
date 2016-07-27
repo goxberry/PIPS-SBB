@@ -61,7 +61,8 @@ BBSMPSNode::BBSMPSNode(int *intVector, double *dblVector){
   nodeDepth=intVector[2];
   parent=NULL;
   childrenAlive=0;
-
+ // int numOfWS=intVector[3];
+  //if (numOfWS!=0)cout<<"ERROR!!!!!! ON NODE NUMBER "<<nodeNumber<<endl;
   partialStartState.resize(intVector[3]);
   vector<variableState> auxVector(4,Basic);
   auxVector[1]=Basic;
@@ -342,13 +343,6 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
       branchingInfoSize+=n_ptr->getBranchingInfoSize();
       n_ptr=n_ptr->parent;
     }
-
-    int nWSs=getPartialStateInfoSize();
-    n_ptr = parent;
-    while(n_ptr!=NULL){
-      nWSs+=n_ptr->getPartialStateInfoSize();
-      n_ptr=n_ptr->parent;
-    }
     
     intVector[4]=branchingInfoSize;
     std::map< pair< int , int > ,int> WSMap;
@@ -415,6 +409,8 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
     oss<<"Node=[NN:"<<getNodeNumber()<<":O:"<<getObjective()<<":D:"<<getNodeDepth()<<":BR:";
     printBranchings(oss);  
     
+    oss<<":WS:"<<partialStartState.size();
+
     std::string s = oss.str();
     cout<<s<<endl;
   }
