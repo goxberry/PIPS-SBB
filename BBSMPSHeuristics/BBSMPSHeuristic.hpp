@@ -22,7 +22,12 @@
 #include "BBSMPSLogging.hpp"
 #include "BBSMPSSolution.hpp"
 
-   
+typedef struct intIntComp
+{
+  int number;
+  int rank;
+} intIntComp;
+
 class BBSMPSHeuristic {
 public:
 	BBSMPSHeuristic(int offset, int depth,  const char *_name);
