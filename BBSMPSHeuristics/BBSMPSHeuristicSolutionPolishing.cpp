@@ -5,7 +5,6 @@ using namespace std;
 bool sortfunction (pair<int, int> i,pair<int, int> j) { return (i.first<j.first); }
 
 
-
 bool BBSMPSHeuristicSolutionPolishing::runHeuristic(BBSMPSNode* node, denseBAVector &nodeSolution){
 	int originalSolutionPoolSize=BBSMPSSolver::instance()->getSolPoolSize();
 	

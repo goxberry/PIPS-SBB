@@ -14,8 +14,9 @@ bool BBSMPSBranchingRuleManager::branch(BBSMPSNode * node, std::vector<BBSMPSNod
 	std::multiset<BBSMPSBranchingRule*>::iterator it;
 	for (it=branchingRuleList.begin(); it!=branchingRuleList.end() && !success; ++it){
 		BBSMPSBranchingRule *br=(*it);
+		double ch1=MPI_Wtime();
 		success= success || br->branch(node, childNodes,  primalSoln);
-		
+		br->setAccumulatedRunTime(br->getAccumulatedRunTime()+(MPI_Wtime()-ch1));
 	}
 	return success;
 }

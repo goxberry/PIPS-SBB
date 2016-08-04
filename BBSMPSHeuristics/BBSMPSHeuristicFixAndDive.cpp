@@ -3,8 +3,7 @@
 using namespace std;
 
 
-bool variableVectorSort(pair <int, double> i,pair <int, double> j) { return (i.second<j.second);}
-bool secondStageVariableVectorSort(pair <pair<int, int> , double> i,pair <pair<int, int> , double> j) { return (i.second<j.second);}
+
 
 
 

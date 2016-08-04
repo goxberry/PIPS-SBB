@@ -72,7 +72,7 @@ objLB(-COIN_DBL_MAX),
 optGapTol(1e-6),
 lpPrimalTol(1e-6),
 lpDualTol(1e-6),
-commTol(0.05),
+commTol(COMM_TOL_INIT),
 compTol(lpPrimalTol),
 status(LoadedFromFile),
 nodesel(BestBound),
@@ -167,9 +167,16 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
    //BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
    //branchingRuleManager.addBranchingRule(mfbr);
 
-   
-   BBSMPSMinFracBranchingRule *mfbr= new BBSMPSMinFracBranchingRule(10);
+  BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10);
    branchingRuleManager.addBranchingRule(mfbr);
+
+//BBSMPSPseudoCostSmallestScenarioFirstBranchingRule *mfbr2= new BBSMPSPseudoCostSmallestScenarioFirstBranchingRule(100);
+   
+   	//  branchingRuleManager.addBranchingRule(mfbr2);
+
+   
+   // BBSMPSMinFracBranchingRule *mfbr= new BBSMPSMinFracBranchingRule(10);
+   // branchingRuleManager.addBranchingRule(mfbr);
 
     //BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
   	//  branchingRuleManager.addBranchingRule(mfbr2);
@@ -194,6 +201,13 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 
     communicationActivated=true;
     iterationsBetweenCommunication=MIN_COMM_ITERS;
+    BAContext BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
+    int BBSMPSProcs=BBSMPSContext.nprocs();
+    nSolsExchanged=10;
+    inRampDownMode=false;
+    totalCommCheckTime=0;
+    bufferedV1=vector<double>(3);
+    bufferedV2=vector<int>(2);
 }
 
 
@@ -204,7 +218,7 @@ objLB(lb),
 optGapTol(1e-6),
 lpPrimalTol(1e-6),
 lpDualTol(1e-6),
-commTol(0.05),
+commTol(COMM_TOL_INIT),
 compTol(lpPrimalTol),
 status(LoadedFromFile),
 nodesel(BestBound),
@@ -237,7 +251,7 @@ initializationTime(0)
     heap.insert(node);
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Exiting B&B constructor.";
 
-    BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
+    BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10);
     branchingRuleManager.addBranchingRule(mfbr);
 
 
@@ -261,6 +275,13 @@ initializationTime(0)
     communicationPending=false;
     communicationActivated=false;
     iterationsBetweenCommunication=MIN_COMM_ITERS;
+    BAContext BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
+    int BBSMPSProcs=BBSMPSContext.nprocs();
+    nSolsExchanged=10;
+    inRampDownMode=false;
+    totalCommCheckTime=0;
+    bufferedV1=vector<double>(3);
+    bufferedV2=vector<int>(2);
 }
 
 BBSMPSTree::~BBSMPSTree(){
@@ -419,15 +440,21 @@ void BBSMPSTree::runParallelSBInitialization(){
 	//set up the branching rule
 	double beginningTime=MPI_Wtime();
 	branchingRuleManager.freeResources();
-
-    BBSMPSParallelPseudoCostBranchingRule *ppcbr= new BBSMPSParallelPseudoCostBranchingRule(100);
+	
+	BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule *ppcbr= new BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule(100);
+    //BBSMPSParallelPseudoCostBranchingRule *ppcbr= new BBSMPSParallelPseudoCostBranchingRule(100);
     branchingRuleManager.addBranchingRule(ppcbr);
 
 	int mype=BBSMPSSolver::instance()->getMype();
 	//cout<<"ABOUT TO START "<<heap.size()<<endl;
 	/* While heap not empty and there are still nodes in tree */
 	// TODO: Add tolerance on optimality gap, time limit option.
-	while (heap.size()<2000) {
+	bool doWeHaveEnoughWork=false;
+	double previousTopOfTheQueue=(*(heap.begin()))->getObjective();
+		 BAContext &BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
+int BBSMPSProcs=BBSMPSContext.nprocs();
+	do  {
+	cout<<"content of the while "<<(!doWeHaveEnoughWork && fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))<commTol)<<endl;
 		
 		int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 		//cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
@@ -456,7 +483,7 @@ void BBSMPSTree::runParallelSBInitialization(){
 
 			break;
 		}
-		
+		previousTopOfTheQueue=(*(heap.begin()))->getObjective();
 		/* Get top-most node and pop it off of heap. */
 		BBSMPSNode *currentNode_ptr=*(heap.begin());
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Copying node " << currentNode_ptr->getNodeNumber() << " off tree.";
@@ -727,17 +754,24 @@ void BBSMPSTree::runParallelSBInitialization(){
 			break;
 		}*/
 		
-
+		if (heap.size()> BBSMPSProcs){
+			double topLB=(*(heap.begin()))->getObjective();
+			std::set<BBSMPSNode*>::iterator it=heap.begin();
+			for (int ct=0; ct<BBSMPSProcs; ct++)it++;
+			double bottomLB=(*(heap.begin()))->getObjective();
+			doWeHaveEnoughWork=(fabs(fabs(objUB-topLB)*100/(fabs(objUB)+10e-10)-fabs(objUB-bottomLB)*100/(fabs(objUB)+10e-10))<commTol);
+			cout<<"do we have enough "<<bottomLB<<" "<<topLB<<" "<<doWeHaveEnoughWork<<endl;
+		}
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
 		bbIterationCounter++;
-		if (0 == mype && verbosityActivated && bbIterationCounter%500==0) {
+		if (0 == mype && verbosityActivated && bbIterationCounter%1==0) {
 			double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 			BBSMPS_ALG_LOG_SEV(warning)<<"\n----------------------------------------------------\n"<<
 			"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
 			"----------------------------------------------------";
 		}
-	}
+	}while (!doWeHaveEnoughWork || fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))>=commTol);
 
 	
 	denseBAVector v1,v2,v3,v4;
@@ -748,14 +782,21 @@ void BBSMPSTree::runParallelSBInitialization(){
     //  BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
     // branchingRuleManager.addBranchingRule(mfbr);
 
-    BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
-   mfbr2->setCostHistory(v1,v2,v3,v4);
-  	  branchingRuleManager.addBranchingRule(mfbr2);
+  //   BBSMPSPseudoCostBranchingRule *mfbr2= new BBSMPSPseudoCostBranchingRule(100);
+ //   mfbr2->setCostHistory(v1,v2,v3,v4);
+  // 	  branchingRuleManager.addBranchingRule(mfbr2);
  //      BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
  //  branchingRuleManager.addBranchingRule(mfbr);
 
-    //  BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10);
-   // branchingRuleManager.addBranchingRule(mfbr);
+     BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10);
+    branchingRuleManager.addBranchingRule(mfbr);
+
+
+ //BBSMPSPseudoCostSmallestScenarioFirstBranchingRule *mfbr2= new BBSMPSPseudoCostSmallestScenarioFirstBranchingRule(100);
+ //   mfbr2->setCostHistory(v1,v2,v3,v4);
+   //	  branchingRuleManager.addBranchingRule(mfbr2);
+
+
 
  //       BBSMPSMinFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMinFracSmallestScenarioFirstBranchingRule(10);
    //branchingRuleManager.addBranchingRule(mfbr);
@@ -814,22 +855,37 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		//cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
 		if(!communicationActivated || BBSMPSProcs==1){
 			checkSequentialTerminationConditions();
+			if (!inRampDownMode){
+				double generalGap = fabs(objUB-bufferedBestLB)*100/(fabs(objUB)+10e-10);
+				if (generalGap<RAMPDOWN_MODE_TOLERANCE){
+					inRampDownMode=true;
+					//activate fast maxfrac rule
+					BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10000);
+ 					branchingRuleManager.addBranchingRule(mfbr);
+				}
+			}
+			
+
 		}
 		else {
+			double startCheckpoint=MPI_Wtime();
 			bool launch=shouldWePerformCommunication( counterToLastIter,  commDone);
-
-			
+			totalCommCheckTime+=(MPI_Wtime()-startCheckpoint);
+			totalCommTime+=(MPI_Wtime()-startCheckpoint);
 
 			if (launch ){
 				commDone=true;
 				//BBSMPS_ALG_LOG_SEV(warning)<<bbIterationCounter<<" THREAD "<<mype<<" "<<BBSMPSMyPe<<" got into communication ";
-   
+   				double startCheckpoint2=MPI_Wtime();
 				communicate(); 
+				totalCommTime+=(MPI_Wtime()-startCheckpoint2);
 			}
 		//	else{
 		//		BBSMPS_ALG_LOG_SEV(warning)<<bbIterationCounter<<" THREAD "<<mype<<" "<<BBSMPSMyPe<<" DID NOT!!!!! got into communication ";
 			//} 
 		}
+
+		
 		counterToLastIter++;
 		PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
 		
@@ -1106,15 +1162,16 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 
 			}
 			//removeCuts();
-			heuristicsManager.runLPHeuristics(currentNode_ptr,primalSoln);
+			if (!inRampDownMode){
+				heuristicsManager.runLPHeuristics(currentNode_ptr,primalSoln);
 		
 
-			if(heuristicsManager.willMIPHeuristicsRun(currentNode_ptr,originalSpaceSolution)){
-				removeCuts();
-				heuristicsManager.runMIPHeuristics(currentNode_ptr,originalSpaceSolution);
-				//removeCuts();
+				if(heuristicsManager.willMIPHeuristicsRun(currentNode_ptr,originalSpaceSolution)){
+					removeCuts();
+					heuristicsManager.runMIPHeuristics(currentNode_ptr,originalSpaceSolution);
+					//removeCuts();
+				}
 			}
-
 		}
 
 		/* Optimality gap termination criteria: if gap between best
@@ -1134,7 +1191,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
 		bbIterationCounter++;
-		if (0 == mype && verbosityActivated && bbIterationCounter%200==0) {
+		if (0 == mype && verbosityActivated && bbIterationCounter%500==0) {
 			double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 			BBSMPS_ALG_LOG_SEV(warning)<<"\n----------------------------------------------------\n"<<
 			"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
@@ -1186,7 +1243,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				BBSMPS_ALG_LOG_SEV(warning)<<"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size();
 				BBSMPS_ALG_LOG_SEV(warning)<<"Nodes Fathomed:"<<nodesFathomed<<":Nodes with integer Solution:"<<nodesBecameInteger;
 				BBSMPS_ALG_LOG_SEV(warning)<<"LP Relaxation Value:"<<LPRelaxationValue<<":LP Relaxation Time:"<<LPRelaxationTime<<":Preprocessing Time:"<<PreProcessingTime<<":Total Time:"<<BBSMPSSolver::instance()->getWallTime();
-				BBSMPS_ALG_LOG_SEV(warning)<<"Number of Communication calls:"<<totalTimesCommCalled<<":Communication Time:"<<totalCommTime<<":Communication Idle Time"<<totalIdleTime;
+				BBSMPS_ALG_LOG_SEV(warning)<<"Number of Communication calls:"<<totalTimesCommCalled<<":Communication Time:"<<totalCommTime<<":Communication Idle Time:"<<totalIdleTime<<":Check Time:"<<totalCommCheckTime;
 				BBSMPS_ALG_LOG_SEV(warning)<<"Parallel Strong Branch Init Time:"<<initializationTime<<":Parallel Strong Branching Comm. Time:"<<initializationParallelBranchingCommTime;
 				
 
@@ -1240,6 +1297,11 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
     BBSMPSHeuristicFixAndDiveLocks *hr5= new BBSMPSHeuristicFixAndDiveLocks(0,3,"FixAndDiveLocks");
 
    heuristicsManager.addLPHeuristic(hr5);  
+ //  BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,3,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
+
+  // heuristicsManager.addLPHeuristic(hr8);  
+   //    BBSMPSHeuristicFixAndDiveScenarioPriority *hr7= new BBSMPSHeuristicFixAndDiveScenarioPriority(0,1,"BBSMPSHeuristicFixAndDiveScenarioPriority");
+//	heuristicsManager.addLPHeuristic(hr7);
   }
 
   void BBSMPSTree::loadCuttingPlanes(){
@@ -1247,12 +1309,12 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
     cuttingPlanesManager.addCuttingPlaneGenerator(plane);
   }
   void BBSMPSTree::loadMIPHeuristics(){
- //  	BBSMPSHeuristicRINS *hr= new BBSMPSHeuristicRINS(30,50,"RINS",200);
-//	BBSMPSHeuristicRENS *hr2= new BBSMPSHeuristicRENS(30,50,"RENS",200);
+   	BBSMPSHeuristicRINS *hr= new BBSMPSHeuristicRINS(30,50,"RINS",1000);
+	BBSMPSHeuristicRENS *hr2= new BBSMPSHeuristicRENS(30,50,"RENS",1000);
   /*	BBSMPSHeuristicCrossover *hr3= new BBSMPSHeuristicCrossover(0,1,"Crossover",1);
   	heuristicsManager.addMIPHeuristic(hr3);*/
- // heuristicsManager.addMIPHeuristic(hr);
-  // heuristicsManager.addMIPHeuristic(hr2);
+  heuristicsManager.addMIPHeuristic(hr);
+   heuristicsManager.addMIPHeuristic(hr2);
   /*
      BBSMPSHeuristicSolutionRINS *hr4= new BBSMPSHeuristicSolutionRINS(0,1,"SolRINS",1);
    	heuristicsManager.addMIPHeuristic(hr4);
@@ -1298,34 +1360,26 @@ void BBSMPSTree::setGAPTolLimit( double _GAPTolLim){
 int BBSMPSTree::communicate(){
 
 	double startCheckpoint=MPI_Wtime();
-	 BAContext &BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
+	BAContext &BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
 	int BBSMPSProcs=BBSMPSContext.nprocs();
 	int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
-
 	int mype=BBSMPSSolver::instance()->getMype();
-
-
-int nSolsExchanged=BBSMPSProcs;
 	BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
+
+
+	if (inRampDownMode){
+		int totalSumOfNodes = heap.size();
+		MPI_Allreduce(MPI_IN_PLACE,&totalSumOfNodes, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm());
+		if (totalSumOfNodes<BBSMPSProcs)return 0;
+	}
+	
 	vector<double> allLBsGathered(BBSMPSProcs);
 	double LBToSend=objLB;
-
-	int totalSumOfNodes = heap.size();
-	MPI_Allreduce(MPI_IN_PLACE,&totalSumOfNodes, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm());
-	if (totalSumOfNodes<BBSMPSProcs)return 0;
 	if (heap.size()==0)LBToSend=COIN_DBL_MAX;
-
-	//BBSMPS_ALG_LOG_SEV(warning)<<"got out of barrier ";
    
 	MPI_Allgather(&LBToSend,1,MPI_DOUBLE, &allLBsGathered[0],1,MPI_DOUBLE,BBSMPSContext.comm());
-	
-	/*if(mype==0){
-			for (int i=0; i<allLBsGathered.size();i++){
-				cout<<"["<<i<<","<<allLBsGathered[i]<<"]";
-			}
-			cout<<endl;
-	}*/
-
+	totalIdleTime+=(MPI_Wtime()-startCheckpoint);
+	double iterationIdleTime=(MPI_Wtime()-startCheckpoint);
 
 	double bestLB=COIN_DBL_MAX;
 	for (int i=0; i<BBSMPSProcs; i++) if (bestLB>allLBsGathered[i]) bestLB=allLBsGathered[i];
@@ -1333,7 +1387,6 @@ int nSolsExchanged=BBSMPSProcs;
 	if (abs(allLBsGathered[BBSMPSMyPe]-bestLB)>=commTol)doINeedComm=1;
 	int nProcsThatNeedComm=0;
 	for (int i=0; i<BBSMPSProcs; i++)if (abs(allLBsGathered[i]-bestLB)>=commTol)nProcsThatNeedComm++;
-
 
 	int totalNodesToExchange=nProcsThatNeedComm*nSolsExchanged;
 
@@ -1348,23 +1401,10 @@ int nSolsExchanged=BBSMPSProcs;
 		it++;
 		if (it==heap.end())localBoundBuff[i]=COIN_DBL_MAX;
 	}
-/*	if(mype==0){
-		for (int i=0;i< BBSMPSProcs; i++){
-  			MPI_Barrier(BBSMPSContext.comm());
 
-  			if (BBSMPSMyPe==i){
-  				
-				cout<<"before allgather "<<BBSMPSMyPe<<" ";
-				for (int i=0; i<localBoundBuff.size();i++){
-					cout<<"["<<i<<","<<localBoundBuff[i]<<"]";
-				}
-				cout<<endl;
-			}
-		}
-	}*/
 	//All to all exchange
 	MPI_Allgather(&localBoundBuff[0],totalNodesToExchange,MPI_DOUBLE, &globalBoundBuff[0],totalNodesToExchange,MPI_DOUBLE,BBSMPSContext.comm());
-	totalIdleTime+=(MPI_Wtime()-startCheckpoint);
+
 	double check1=(MPI_Wtime()-startCheckpoint);
 	double check2=MPI_Wtime();
 	/*if(mype==0){
@@ -1383,8 +1423,9 @@ int nSolsExchanged=BBSMPSProcs;
 		}
 	}
 	//sort vector of pairs
+	double chhhh=(MPI_Wtime());
 	sort(globalBoundVector.begin(), globalBoundVector.end(),boundVectorComparator);
-	
+	double chh=(MPI_Wtime()-chhhh);
 
 /*	if(mype==0 && BBSMPSMyPe==0){
 			cout<<"the sort looks like this "<<BBSMPSMyPe<<" ";
@@ -1593,13 +1634,6 @@ int nSolsExchanged=BBSMPSProcs;
 		}
 	}
 
-	int heapSizeHa=heap.size();
-	
-	MPI_Allreduce(MPI_IN_PLACE,&heapSizeHa, 1, MPI_INT,MPI_MAX,ctx.comm());
-	
-	if (heapSizeHa!=heap.size() ) {
-		BBSMPS_ALG_LOG_SEV(warning)<<"ATENCIO!!!! DIFFERENCENT TREE SIZES!!! "<<heapSizeHa<<" "<<heap.size();
-	}
 
 	//cout<<" the size of the heap is "<<heap.size()<<endl;
 	BBSMPSNode *currentNode_ptr=*(heap.begin());
@@ -1607,15 +1641,15 @@ int nSolsExchanged=BBSMPSProcs;
 	objLB=currentNode_ptr->getObjective();
 	//cout<<" set the obj LP to value "<<objLB<<" the node at the top is node "<<currentNode_ptr->getNodeNumber()<<endl;
 	check6=(MPI_Wtime()-check6);
-	cout<<"TIMES ch1:"<<check1<<" "<<check2<<" "<<check3<<" "<<check4<<" "<<check5<<" "<<check6<<" "<<comm<<" "<<comm1<<endl;
-	totalCommTime+=(MPI_Wtime()-startCheckpoint);
+	cout<<"TIMES ch1:"<<iterationIdleTime<<":1:"<<check1<<":2:"<<check2<<":3:"<<check3<<":4:"<<check4<<":5:"<<check5<<":6:"<<check6<<" "<<comm<<" "<<comm1<<":Sort:"<<chh<<endl;
+
     totalTimesCommCalled++;
 }
 
 
 bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &commDone){
 
-	double startCheckpoint=MPI_Wtime();
+
 	BAContext BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
 	int BBSMPSProcs=BBSMPSContext.nprocs();
 	int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
@@ -1624,35 +1658,10 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 //	BBSMPS_ALG_LOG_SEV(warning)<<"processor "<<BBSMPSMyPe<<" "<<mype<<" got into should we run!!";
 	MPI_Status status;
 	if (communicationPending){
-
 		if (!commDone){//taking care of the first iteration
 			MPI_Wait(request0,&status);
-
 			MPI_Wait(request1,&status);
-
-			MPI_Wait(request2,&status);
-
-			MPI_Wait(request3,&status);
-
-			MPI_Wait(request4,&status);
 		}
-
-		/*if(counterToLastIter%(iterationsBetweenCommunication*4)==(iterationsBetweenCommunication*4-1)){
-			cout<<"PROCESSOR "<<BBSMPSMyPe<<" got into wait mode at iteration "<<bbIterationCounter<<" ct to last iter "<<counterToLastIter<<endl;
-			double startCheckpoint2=MPI_Wtime();
-	
-			MPI_Wait(request0,&status);
-
-			MPI_Wait(request1,&status);
-
-			MPI_Wait(request2,&status);
-
-			MPI_Wait(request3,&status);
-
-			MPI_Wait(request4,&status);
-			totalIdleTime+=(MPI_Wtime()-startCheckpoint2);
-		}*/
-
 		int flag=0;
 		int flagAux=0;
 		
@@ -1660,14 +1669,7 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 		flag+=flagAux;
 		MPI_Test(request1,&flagAux,&status);
 		flag+=flagAux;
-		MPI_Test(request2,&flagAux,&status);
-		flag+=flagAux;
-		MPI_Test(request3,&flagAux,&status);
-		flag+=flagAux;
-		MPI_Test(request4,&flagAux,&status);
-		flag+=flagAux;
-	//	BBSMPS_ALG_LOG_SEV(warning)<<"and the sum is "<<flag;
-		if (flag==5){
+		if (flag==2){
 			int weFoundMPIReq=1;
 			MPI_Allreduce(MPI_IN_PLACE,&weFoundMPIReq, 1, MPI_INT,MPI_MAX,ctx.comm());
 		}
@@ -1676,108 +1678,85 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 			MPI_Allreduce(MPI_IN_PLACE,&weFoundMPIReq, 1, MPI_INT,MPI_MAX,ctx.comm());
 			if (weFoundMPIReq==1){
 				double startCheckpoint2=MPI_Wtime();
-	
 				MPI_Wait(request0,&status);
-
 				MPI_Wait(request1,&status);
-
-				MPI_Wait(request2,&status);
-
-				MPI_Wait(request3,&status);
-
-				MPI_Wait(request4,&status);
 				totalIdleTime+=(MPI_Wtime()-startCheckpoint2);
-				flag=5;
+				flag=2;
 			}
 		}
-		if (flag==5){
-	//		BBSMPS_ALG_LOG_SEV(warning)<<"ENTERING ON FIRST COMMUNICATION";
-			communicationPending=false;
+		if (flag==2){
+	
+			communicationPending=false;   
+			bufferedUB=bufferedV1[0];
+			bufferedItCounter=bufferedV2[0];
+			bufferedWorstLB=-bufferedV1[1];
+			bufferedBestLB=bufferedV1[2];
+			bufferedNodesLeft=bufferedV2[1];
+
 
 			objUB=min(objUB,bufferedUB);
-		//	BBSMPS_ALG_LOG_SEV(warning)<<"we got out of communication "<<bufferedUB<<" "<<bufferedItCounter<<" "<<bufferedNodesLeft<<" "<<bufferedBestLB<<" "<<bufferedWorstLB;
 			if ((BBSMPSSolver::instance()->getWallTime())>tiLim){
-
 				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Time Limit reached.";
-				totalCommTime+=(MPI_Wtime()-startCheckpoint);
 				inTermination=true;
-				
 				return false;
 			}
 			if (BBSMPSSolver::instance()->getSolPoolSize()-solsDiscoveredInit>=solsDiscoveredLimit){
 				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Solution Limit reached.";
 				inTermination=true;
-				totalCommTime+=(MPI_Wtime()-startCheckpoint);
 				return false;
 			}
-
 			if (bufferedItCounter>nodeLim){
 				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Node Limit reached.";
 				inTermination=true;
-				totalCommTime+=(MPI_Wtime()-startCheckpoint);
 				return false;
 			}
-
 			if (bufferedNodesLeft==0){
 				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Heap is empty.";
 				inTermination=true;
-				totalCommTime+=(MPI_Wtime()-startCheckpoint);
 				return false;
 			}
 			counterToLastIter=0;
-			double generalGap = fabs(objUB-bufferedBestLB)*100/(fabs(objUB)+10e-10);
-	//		BBSMPS_ALG_LOG_SEV(warning)<<" COMPARISON "<<bufferedBestLB-bufferedWorstLB<<" "<<(abs(bufferedBestLB-bufferedWorstLB)>=commTol)<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(generalGap<0.01);
-			if ((bufferedNodesLeft>=BBSMPSProcs) && (abs(bufferedBestLB-bufferedWorstLB)>=commTol || (bufferedWorstLB - compTol) >= objUB  || generalGap<0.05)) {//communication needed
-		//		BBSMPS_ALG_LOG_SEV(warning)<<"PROCESSOR "<<BBSMPSMyPe<<" called communication at iteration "<<bbIterationCounter<<" ct to last iter "<<counterToLastIter;
+			double bestGap = fabs(bufferedUB-bufferedBestLB)*100/(fabs(bufferedUB)+10e-10);
+			double worstGap = fabs(bufferedUB-bufferedWorstLB)*100/(fabs(bufferedUB)+10e-10);
+			cout<<" best gap worst gap "<<bestGap<<" "<<worstGap<<endl;
+			if (!inRampDownMode &&bestGap<RAMPDOWN_MODE_TOLERANCE){
+					inRampDownMode=true;
+					//activate fast maxfrac rule
+					BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10000);
+ 					branchingRuleManager.addBranchingRule(mfbr);
+ 					//nSolsExchanged*=2;
+
+				}
+			if ((bufferedNodesLeft>=BBSMPSProcs) && (abs(bestGap-worstGap)>=commTol || (bufferedWorstLB - compTol) >= objUB  || inRampDownMode)) {//communication needed
 				totalTimesCommCalled++;
-				totalCommTime+=(MPI_Wtime()-startCheckpoint);
 				iterationsBetweenCommunication/=1.5;
 				iterationsBetweenCommunication=max(iterationsBetweenCommunication,MIN_COMM_ITERS);
-				if (generalGap<0.05)iterationsBetweenCommunication=RAMPDOWN_COMM_ITERS;
-				//cout<<"ITERATIONS SET TO "<<iterationsBetweenCommunication<<" "<<bufferedBestLB-bufferedWorstLB<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(bufferedWorstLB - compTol)<<" "<<objUB<<" "<<generalGap<<endl;
+				if (inRampDownMode)iterationsBetweenCommunication=RAMPDOWN_COMM_ITERS;
 				return true;
 			}
 			else{
-				
 				iterationsBetweenCommunication*=1.5;
 				iterationsBetweenCommunication=min(iterationsBetweenCommunication,MAX_COMM_ITERS);
-				if (generalGap<0.05)iterationsBetweenCommunication=RAMPDOWN_COMM_ITERS;
-				//cout<<"ITERATIONS SET TO "<<iterationsBetweenCommunication<<" "<<bufferedBestLB-bufferedWorstLB<<" "<<((bufferedWorstLB - compTol) >= objUB)<<" "<<(bufferedWorstLB - compTol)<<" "<<objUB<<" "<<generalGap<<endl;
+				if (inRampDownMode)iterationsBetweenCommunication=RAMPDOWN_COMM_ITERS;
 			}
 		}
-
-		totalCommTime+=(MPI_Wtime()-startCheckpoint);
 		return false;
 	}
-//	cout<<"processor is here "<<counterToLastIter<<" "<<commDone<<" "<<(counterToLastIter%100==0 && commDone)<<" "<<(heap.size()==0 || (!commDone && heap.size()>16))<<"FINAL RESULT "<<!((counterToLastIter%10==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
 	if ( !((counterToLastIter%iterationsBetweenCommunication==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>BBSMPSProcs))){
-	//	cout<<"processor "<<BBSMPSMyPe<<" we are not running this turn"<<endl;
-		totalCommTime+=(MPI_Wtime()-startCheckpoint);
 		return false;
 	}
 		
 	
-	bufferedUB=objUB;
-	bufferedItCounter=bbIterationCounter;
-	bufferedWorstLB=objLB;
-	bufferedBestLB=objLB;
-	bufferedNodesLeft=heap.size();
-//	cout<<"PROCESSOR "<<BBSMPSMyPe<<" LAUNCHED ALLREDUCE communication at iteration "<<bbIterationCounter<<" ct to last iter "<<counterToLastIter<<endl;
-	//cout<<"setting up a new allreduce "<<bufferedUB<<" "<<bufferedItCounter<<" "<<bufferedNodesLeft<<" "<<bufferedBestLB<<" "<<bufferedWorstLB<<endl;
-    MPI_Iallreduce(MPI_IN_PLACE,&bufferedUB, 1, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm(),request0);
-    MPI_Iallreduce(MPI_IN_PLACE,&bufferedItCounter, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm(),request1);
-    MPI_Iallreduce(MPI_IN_PLACE,&bufferedWorstLB, 1, MPI_DOUBLE,MPI_MAX,BBSMPSContext.comm(),request2);
-	MPI_Iallreduce(MPI_IN_PLACE,&bufferedBestLB, 1, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm(),request3);
-	MPI_Iallreduce(MPI_IN_PLACE,&bufferedNodesLeft, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm(),request4);
-
-	
-	
+	bufferedV1[0]=objUB;
+	bufferedV1[1]=-objLB;
+	bufferedV1[2]=objLB;
+	bufferedV2[0]=bbIterationCounter;
+	bufferedV2[1]=heap.size();
+   
+   	MPI_Iallreduce(MPI_IN_PLACE,&bufferedV1[0], 3, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm(),request0);
+    MPI_Iallreduce(MPI_IN_PLACE,&bufferedV2[0], 2, MPI_INT,MPI_SUM,BBSMPSContext.comm(),request1);
 	communicationPending=true;
-	
-
-	totalCommTime+=(MPI_Wtime()-startCheckpoint);
 	return false;
 
-	
 }
 

@@ -15,7 +15,7 @@
 
 #include <set>
 #include "BBSMPSBranchingRule.hpp"
-
+#include <mpi.h>
 struct BRPriorityOrdering
 {
 	bool operator() (const BBSMPSBranchingRule* lhs, const BBSMPSBranchingRule* rhs) const

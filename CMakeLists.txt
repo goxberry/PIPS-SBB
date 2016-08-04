@@ -126,7 +126,7 @@ set(CMAKE_BUILD_TYPE RELWITHDEBINFO)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 #IF(CMAKE_COMPILER_IS_GNUCXX)
-#       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -O3")
+       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -O3")
 #ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 include_directories(${COINUTILS_INCLUDE_DIRS})
@@ -161,6 +161,8 @@ add_library(pipssbb
 	BBSMPSBranching/BBSMPSMinFracBranchingRule.cpp
 	BBSMPSBranching/BBSMPSMaxFracSmallestScenarioFirstBranchingRule.cpp
 	BBSMPSBranching/BBSMPSMinFracSmallestScenarioFirstBranchingRule.cpp
+	BBSMPSBranching/BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule.cpp
+	BBSMPSBranching/BBSMPSPseudoCostSmallestScenarioFirstBranchingRule.cpp
 	BBSMPSBranching/BBSMPSPseudoCostBranchingRule.cpp
 	BBSMPSBranching/BBSMPSParallelPseudoCostBranchingRule.cpp
 	BBSMPSUtils/BBSMPSUtils.cpp
@@ -172,6 +174,8 @@ add_library(pipssbb
 	BBSMPSHeuristics/BBSMPSHeuristicRENS.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicFixAndDive.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicFixAndDiveLocks.cpp
+	BBSMPSHeuristics/BBSMPSHeuristicFixAndDiveScenarioPriority.cpp
+	BBSMPSHeuristics/BBSMPSHeuristicFixAndDiveLocksScenarioPriority.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicCrossover.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicLockRounding.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicMagic.cpp

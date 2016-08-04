@@ -23,6 +23,11 @@ typedef struct comp
   int rank;
 } comp;
 
+typedef struct compIntInt
+{
+  int result;
+  int rank;
+} compIntInt;
 
 class BBSMPSBranchingRule {
 
@@ -33,6 +38,8 @@ public:
 	void setPriority(int _priority);
 	virtual bool branch(BBSMPSNode * node, std::vector<BBSMPSNode*> &childNodes,const  denseBAVector& primalSoln){std::cout<<"Well, this is an error...\n";};
 	virtual void printStatistics();
+	void setAccumulatedRunTime(double time){accumulatedRunTime=time;};
+	double getAccumulatedRunTime(){return accumulatedRunTime;};
 private:
 	int priority;
 

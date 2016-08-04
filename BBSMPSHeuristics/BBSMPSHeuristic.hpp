@@ -28,8 +28,11 @@ typedef struct intIntComp
   int rank;
 } intIntComp;
 
+
 class BBSMPSHeuristic {
 public:
+
+
 	BBSMPSHeuristic(int offset, int depth,  const char *_name);
 	~BBSMPSHeuristic();
 	virtual bool shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){return true;};
@@ -37,6 +40,18 @@ public:
 	virtual bool runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){std::cout<<"Well, this is an error...\n";};
 	double getCumulativeTime(){return cumulativeTime;};
 	virtual void printStatistics();
+
+
+	bool variableVectorSort(pair <int, double> i,pair <int, double> j) { return (i.second<j.second);}
+	bool secondStageVariableVectorSort(pair <pair<int, int> , double> i,pair <pair<int, int> , double> j) { return (i.second<j.second);}
+
+
+	double objContribution(double valueToRound, double objCoefficient, int roundingDirection);
+
+	void generateLocks(denseBAVector & upLocks, denseBAVector &downLocks);
+
+
+
 private:
 		
 		std::string name;

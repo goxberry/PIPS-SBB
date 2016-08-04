@@ -41,6 +41,8 @@
 #include "BBSMPSMinFracBranchingRule.hpp"
 #include "BBSMPSMaxFracSmallestScenarioFirstBranchingRule.hpp"
 #include "BBSMPSMinFracSmallestScenarioFirstBranchingRule.hpp"
+#include "BBSMPSPseudoCostSmallestScenarioFirstBranchingRule.hpp"
+#include "BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule.hpp"
 #include "BBSMPSBranchingRuleManager.hpp"
 #include "BBSMPSHeuristicsManager.hpp"
 #include "BBSMPSHeuristicRounding.hpp"
@@ -53,6 +55,8 @@
 #include "BBSMPSHeuristicRINS.hpp"
 #include "BBSMPSHeuristicFixAndDive.hpp"
 #include "BBSMPSHeuristicFixAndDiveLocks.hpp"
+#include "BBSMPSHeuristicFixAndDiveScenarioPriority.hpp"
+#include "BBSMPSHeuristicFixAndDiveLocksScenarioPriority.hpp"
 #include "BBSMPSHeuristicCrossover.hpp"
 #include "BBSMPSHeuristicLockRounding.hpp"
 #include "BBSMPSHeuristicMagic.hpp"
@@ -70,9 +74,9 @@
 
 #define MIN_COMM_ITERS 50
 #define MAX_COMM_ITERS 5000
-#define RAMPDOWN_COMM_ITERS 50
-
-
+#define RAMPDOWN_COMM_ITERS 5
+#define COMM_TOL_INIT 0.1
+#define RAMPDOWN_MODE_TOLERANCE 0.3
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus);
 
@@ -202,19 +206,22 @@ private:
   double totalIdleTime;
   double totalCommTime;
   double totalTimesCommCalled;
+  double totalCommCheckTime;
   int nodesFathomed;
   int nodesBecameInteger;
   bool verbosityActivated;
   bool inTermination;
-
+bool inRampDownMode;
  
 
+vector<double> bufferedV1;
+vector<int> bufferedV2;
 double	bufferedUB;
 int 	bufferedItCounter;
 double	bufferedWorstLB;
 double	bufferedBestLB;
 int	bufferedNodesLeft;
-
+int nSolsExchanged;
   vector<int> currentlyAppliedPlanes;
   BBSMPSBranchingRuleManager branchingRuleManager;
   BBSMPSHeuristicsManager heuristicsManager;
@@ -243,6 +250,8 @@ int	bufferedNodesLeft;
   BBSMPSSolverState status;
 
   static BBSMPSNode* rootNode;
+
+
 
     // Auxiliary functions for branching
   int getFirstStageMinIntInfeasCol(const denseBAVector& primalSoln);

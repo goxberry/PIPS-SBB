@@ -28,6 +28,12 @@ public:
 
 private:
 
+
+int findAndFixFirstStageConstraint(denseBAVector &roundedSolution,denseBAVector & upLocks, denseBAVector &downLocks,denseBAVector &lb,denseBAVector &ub);
+
+int findFreshFirstStageVar(denseBAVector &roundedSolution,denseBAVector & upLocks, denseBAVector &downLocks,denseBAVector &lb,denseBAVector &ub);
+int findAndFixSecondStageConstraint(denseBAVector &roundedSolution,denseBAVector & upLocks, denseBAVector &downLocks,denseBAVector &lb,denseBAVector &ub);
+int findFreshSecondStageVar(denseBAVector &roundedSolution,denseBAVector & upLocks, denseBAVector &downLocks,denseBAVector &lb,denseBAVector &ub);
 };
 
 
