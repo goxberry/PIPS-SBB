@@ -66,7 +66,7 @@ bool operator> (const BBSMPSNode& left,
 }
 
 
-BBSMPSTree::BBSMPSTree(const SMPSInput& smps,int nSolvers): 
+BBSMPSTree::BBSMPSTree(const SMPSInput& smps,int _nSolvers): 
 objUB(COIN_DBL_MAX),
 objLB(-COIN_DBL_MAX),
 optGapTol(1e-6),
@@ -86,7 +86,7 @@ initializationTime(0)
 {
 	double timeStart=MPI_Wtime();
 
-	BBSMPSSolver::initialize(smps,nSolvers); 
+	BBSMPSSolver::initialize(smps,_nSolvers); 
 	double timeStampPreProc=MPI_Wtime();
 	PreProcessingTime=timeStampPreProc-timeStart;
    // if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Calling B&B tree constructor.";
@@ -172,7 +172,7 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 
 //BBSMPSPseudoCostSmallestScenarioFirstBranchingRule *mfbr2= new BBSMPSPseudoCostSmallestScenarioFirstBranchingRule(100);
    
-   	//  branchingRuleManager.addBranchingRule(mfbr2);
+   //	  branchingRuleManager.addBranchingRule(mfbr2);
 
    
    // BBSMPSMinFracBranchingRule *mfbr= new BBSMPSMinFracBranchingRule(10);
@@ -203,16 +203,30 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
     iterationsBetweenCommunication=MIN_COMM_ITERS;
     BAContext BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
     int BBSMPSProcs=BBSMPSContext.nprocs();
-    nSolsExchanged=10;
+    nSolvers=_nSolvers;
+    nSolsExchanged=nSolvers;
+    if (nSolvers*nSolsExchanged>MAX_COMMUNICATION_SIZE)nSolsExchanged=MAX_COMMUNICATION_SIZE/nSolvers;
+    nSolsExchanged=50;
+    cout<<"total of solutions to exchange is "<<nSolsExchanged<<endl;
     inRampDownMode=false;
     totalCommCheckTime=0;
     bufferedV1=vector<double>(3);
     bufferedV2=vector<int>(2);
+/*
+    BBSMPSCuttingPlaneGeneratorGMI *gmic = new BBSMPSCuttingPlaneGeneratorGMI("GMI");
+    gmic->generateCuttingPlane(rootNode,ubPrimalSolution);
+    std::vector<BBSMPSCuttingPlane*> cpVector;
+	rootNode->getAllCuttingPlanes(cpVector);
+	for (int i=0; i< cpVector.size(); i++){
+		cpVector[i]->applyCuttingPlane();
+	}
+    BBSMPSSolver::instance()->commitNewColsAndRows();
+      rootSolver.go();*/
 }
 
 
 
-BBSMPSTree::BBSMPSTree(BBSMPSNode *node, double lb, double ub): 
+BBSMPSTree::BBSMPSTree(BBSMPSNode *node, double lb, double ub ): 
 objUB(ub),
 objLB(lb),
 optGapTol(1e-6),
@@ -454,7 +468,7 @@ void BBSMPSTree::runParallelSBInitialization(){
 		 BAContext &BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
 int BBSMPSProcs=BBSMPSContext.nprocs();
 	do  {
-	cout<<"content of the while "<<(!doWeHaveEnoughWork && fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))<commTol)<<endl;
+	//cout<<"content of the while "<<(!doWeHaveEnoughWork && fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))<commTol)<<endl;
 		
 		int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 		//cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
@@ -760,15 +774,15 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			for (int ct=0; ct<BBSMPSProcs; ct++)it++;
 			double bottomLB=(*(heap.begin()))->getObjective();
 			doWeHaveEnoughWork=(fabs(fabs(objUB-topLB)*100/(fabs(objUB)+10e-10)-fabs(objUB-bottomLB)*100/(fabs(objUB)+10e-10))<commTol);
-			cout<<"do we have enough "<<bottomLB<<" "<<topLB<<" "<<doWeHaveEnoughWork<<endl;
+			//cout<<"do we have enough "<<bottomLB<<" "<<topLB<<" "<<doWeHaveEnoughWork<<endl;
 		}
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
 		bbIterationCounter++;
-		if (0 == mype && verbosityActivated && bbIterationCounter%1==0) {
+		if (0 == mype && verbosityActivated && bbIterationCounter%500==0) {
 			double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 			BBSMPS_ALG_LOG_SEV(warning)<<"\n----------------------------------------------------\n"<<
-			"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
+			"Iteration PARBB "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
 			"----------------------------------------------------";
 		}
 	}while (!doWeHaveEnoughWork || fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))>=commTol);
@@ -1290,16 +1304,16 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
   	
 */
 
-  	BBSMPSHeuristicLockRounding *hr6= new BBSMPSHeuristicLockRounding(0,3,"HeuristicLockRounding");
+  	//BBSMPSHeuristicLockRounding *hr6= new BBSMPSHeuristicLockRounding(0,30,"HeuristicLockRounding");
 
-  heuristicsManager.addLPHeuristic(hr6);
+//  heuristicsManager.addLPHeuristic(hr6);
 
-    BBSMPSHeuristicFixAndDiveLocks *hr5= new BBSMPSHeuristicFixAndDiveLocks(0,3,"FixAndDiveLocks");
+    BBSMPSHeuristicFixAndDiveLocks *hr5= new BBSMPSHeuristicFixAndDiveLocks(0,30,"FixAndDiveLocks");
 
    heuristicsManager.addLPHeuristic(hr5);  
- //  BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,3,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
+   //BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,15,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
 
-  // heuristicsManager.addLPHeuristic(hr8);  
+ //  heuristicsManager.addLPHeuristic(hr8);  
    //    BBSMPSHeuristicFixAndDiveScenarioPriority *hr7= new BBSMPSHeuristicFixAndDiveScenarioPriority(0,1,"BBSMPSHeuristicFixAndDiveScenarioPriority");
 //	heuristicsManager.addLPHeuristic(hr7);
   }
@@ -1309,8 +1323,8 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
     cuttingPlanesManager.addCuttingPlaneGenerator(plane);
   }
   void BBSMPSTree::loadMIPHeuristics(){
-   	BBSMPSHeuristicRINS *hr= new BBSMPSHeuristicRINS(30,50,"RINS",1000);
-	BBSMPSHeuristicRENS *hr2= new BBSMPSHeuristicRENS(30,50,"RENS",1000);
+   	BBSMPSHeuristicRINS *hr= new BBSMPSHeuristicRINS(30,500,"RINS",250);
+	BBSMPSHeuristicRENS *hr2= new BBSMPSHeuristicRENS(30,500,"RENS",250);
   /*	BBSMPSHeuristicCrossover *hr3= new BBSMPSHeuristicCrossover(0,1,"Crossover",1);
   	heuristicsManager.addMIPHeuristic(hr3);*/
   heuristicsManager.addMIPHeuristic(hr);

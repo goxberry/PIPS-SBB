@@ -19,16 +19,16 @@ void fillPlaneExpression(denseBAVector &expr, sparseBAVector &row, double beta){
 	for (int j = 0; j < nnz1; j++) {
 		int r = v1Idx[j];
 		double val = v1Elts[r];
-		if (val!=0){	
+		if (val!=0 && r<originalFirstStageVars){	
 			double coef=0;
-			if (r<originalFirstStageVars && input.isFirstStageColInteger(r)){
+			if (input.isFirstStageColInteger(r) ){
 				double aHat=floorFracPart(val);
-				if (aHat<bHat)coef= aHat/bHat;
-				else coef= ((1-aHat))/(1-bHat);
+				if (aHat<=bHat)coef= aHat;
+				else coef= bHat*((1-aHat))/(1-bHat);
 			}
 			else {
-				if (val>0) coef=val/bHat;
-				else coef= (-val/(1-bHat));
+				if (val>=0) coef=val;
+				else coef= -bHat*(val/(1-bHat));
 			}
 			if (coef!=0)expr.getFirstStageVec()[r]=coef;
 		}
@@ -46,16 +46,16 @@ void fillPlaneExpression(denseBAVector &expr, sparseBAVector &row, double beta){
 			for (int j = 0; j < nnz2; j++) {
 				int r = v2Idx[j];
 				double val = v2Elts[r];
-				if (val!=0){
+				if (val!=0 &&r<originalSecondStageVars){
 					double coef=0;
-					if (r<originalSecondStageVars &&input.isSecondStageColInteger(scen,r)){
+					if ( input.isSecondStageColInteger(scen,r)){
 						double aHat=floorFracPart(val);
-						if (aHat<bHat)coef= aHat/bHat;
-						else coef= ((1-aHat))/(1-bHat);
+						if (aHat<=bHat)coef= aHat;
+						else coef= bHat*((1-aHat))/(1-bHat);
 					}
 					else {
-						if (val>0) coef=val/bHat;
-						else coef= (-val/(1-bHat));
+						if (val>=0) coef=val;
+						else coef= -bHat*(val/(1-bHat));
 					}
 					if (coef!=0)expr.getSecondStageVec(scen)[r]=coef;
 				}
@@ -70,7 +70,7 @@ void fillPlaneExpression(denseBAVector &expr, sparseBAVector &row, double beta){
 
 bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	//Generate cut here
-	//BBSMPS_ALG_LOG_SEV(info) <<"We are generating GMI cuts"<< status;
+	BBSMPS_ALG_LOG_SEV(info) <<"We are generating GMI cuts";
 	PIPSSInterface &solver= BBSMPSSolver::instance()->getPIPSInterface();
     const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
     BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
@@ -90,6 +90,7 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 	for (int j = 0; j < nnz1; j++) {
 		int row = v1Idx[j];
 		double val = v1Elts[row];
+		cout<<"BETA FOR ROW "<<row<<" HAS VALUE "<<val<<endl;
 		if (!isIntFeas(val, intTol)){
 			sparseBAVector newRow;
 			BAIndex inIndex;
@@ -97,7 +98,10 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 			inIndex.idx=row;
 			solver.generateNonBasicRow(inIndex, newRow);
 			count++;
-
+		//	newRow.getVec(-1).printDense();
+		//	for (int scen = 0; scen < input.nScenarios(); scen++) {
+		//		if(ctx.assignedScenario(scen)) newRow.getVec(scen).printDense();
+		//	}
 			denseBAVector expr;
 			expr.allocate(dimsSlacks,ctx,PrimalVector);
 			expr.clear();
@@ -105,8 +109,24 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 			fillPlaneExpression(expr, newRow, val);
 			double bHat= floorFracPart(val);
 	
-			BBSMPSCuttingPlane *cuttingPlane= new BBSMPSCuttingPlane(bHat, COIN_DBL_MAX, expr);
-			node->addCuttingPlane(cuttingPlane);
+			double ExprValue =0;
+			for (int scen = 0; scen < input.nScenarios(); scen++) {
+				if(ctx.assignedScenario(scen)) {
+					for (int i=0; i<dimsSlacks.inner.numVars(scen);i++){
+						ExprValue+=(LPRelaxationSolution.getVec(scen)[i]*expr.getVec(scen)[i]);
+					}
+				}
+			}
+			MPI_Allreduce(MPI_IN_PLACE,&ExprValue,1,MPI_DOUBLE,MPI_SUM,ctx.comm());
+			for (int i=0; i<dimsSlacks.inner.numVars(-1);i++){
+						ExprValue+=(LPRelaxationSolution.getVec(-1)[i]*expr.getVec(-1)[i]);
+			}
+			cout<<" EXPR VALUE "<<ExprValue<<" bhat "<<bHat<<endl;
+			if (ExprValue-bHat<-1E-6){
+	
+				BBSMPSCuttingPlane *cuttingPlane= new BBSMPSCuttingPlane(bHat, COIN_DBL_MAX, expr);
+				node->addCuttingPlane(cuttingPlane);
+			}
 		} 
 		
 	}
@@ -121,6 +141,7 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 			for (int j = 0; j < nnz2; j++) {
 				int row = v2Idx[j];
 				double val = v2Elts[row];
+				//cout<<"BETA FOR ROW "<<scen<<" "<<row<<" HAS VALUE "<<val<<endl;
 				if (!isIntFeas(val, intTol)){
 					sparseBAVector newRow;
 					
@@ -130,6 +151,7 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 					solver.generateNonBasicRow(inIndex, newRow);
 					count++;
 
+
 					denseBAVector expr;
 					expr.allocate(dimsSlacks,ctx,PrimalVector);
 					expr.clear();
@@ -137,9 +159,26 @@ bool BBSMPSCuttingPlaneGeneratorGMI::generateCuttingPlane(BBSMPSNode* node, dens
 					fillPlaneExpression(expr, newRow, val);
 					double bHat= floorFracPart(val);
 	
-					BBSMPSCuttingPlane *cuttingPlane= new BBSMPSCuttingPlane(1, COIN_DBL_MAX, expr);
-					node->addCuttingPlane(cuttingPlane);
+					double ExprValue =0;
+					for (int scenn = 0; scenn < input.nScenarios(); scenn++) {
+						if(ctx.assignedScenario(scenn)) {
+							for (int i=0; i<dimsSlacks.inner.numVars(scenn);i++){
+								ExprValue+=(LPRelaxationSolution.getVec(scenn)[i]*expr.getVec(scenn)[i]);
+							}
+						}
+					}
+					MPI_Allreduce(MPI_IN_PLACE,&ExprValue,1,MPI_DOUBLE,MPI_SUM,ctx.comm());
+					for (int i=0; i<dimsSlacks.inner.numVars(-1);i++){
+								ExprValue+=(LPRelaxationSolution.getVec(-1)[i]*expr.getVec(-1)[i]);
+					}
+					cout<<scen<<" "<<row<<" EXPR VALUE "<<ExprValue<<" bhat "<<bHat<<endl;
+					if (ExprValue-bHat<-1E-6){
+			
+						BBSMPSCuttingPlane *cuttingPlane= new BBSMPSCuttingPlane(bHat, COIN_DBL_MAX, expr);
+						node->addCuttingPlane(cuttingPlane);
+					}
 
+				
 				}
 			}	
 		}

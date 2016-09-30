@@ -507,7 +507,7 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 
 bool BBSMPSHeuristicLockRounding::shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	if (node->getNodeDepth()<5)return true;
-	else depth=25;
+	//else depth=50;
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	BAContext &ctx= BBSMPSSolver::instance()->getBAContext();
 	
@@ -563,6 +563,6 @@ bool BBSMPSHeuristicLockRounding::shouldItRun(BBSMPSNode* node, denseBAVector &L
 	//cout<<"Total number of frac vars "<<numberOfFractionalVariables<<" n int vars "<<nIntVars<<	" ratio "<<(numberOfFractionalVariables*100/nIntVars)<<endl;
 	
 	if (nIntVars==0)return false;
-	return ((numberOfFractionalVariables*100/nIntVars)<40 );
+	return ((numberOfFractionalVariables*100/nIntVars)<400 );
 
 }

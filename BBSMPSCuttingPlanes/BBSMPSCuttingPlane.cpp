@@ -34,6 +34,7 @@ BBSMPSCuttingPlane::~BBSMPSCuttingPlane(){};
 
 
 bool BBSMPSCuttingPlane::applyCrossScenarioCuttingPlane(){
+
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
 	const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
@@ -158,12 +159,14 @@ bool BBSMPSCuttingPlane::applySingleScenarioCuttingPlane(){
 }
 bool BBSMPSCuttingPlane::applyCuttingPlane(){
 
+	cout<<"Applying cutting plane "<<uid<<endl;
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
 	const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
 	BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
 	int mype=BBSMPSSolver::instance()->getMype();
 	if (isExpressionDense){
+		cout<<"Applying cross scenario "<<uid<<endl;
 		applyCrossScenarioCuttingPlane();
 	}
 	else{
@@ -179,10 +182,12 @@ bool BBSMPSCuttingPlane::applyCuttingPlane(){
 		//nScensInExpr+= (sExpr.getFirstStageVec().v.getNumElements()>0);
 		//Do crossScenario cut
 		if (nScensInExpr>1){
+			cout<<"Applying cross scenario "<<uid<<endl;
 			applyCrossScenarioCuttingPlane();
 		}
 		else {
 			//Decide on scenario and apply only if we own it.
+			cout<<"Applying single scenario "<<uid<<endl;
 			applySingleScenarioCuttingPlane();
 		}
 	}

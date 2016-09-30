@@ -285,7 +285,7 @@ bool BBSMPSHeuristicFixAndDiveLocks::runHeuristic(BBSMPSNode* node, denseBAVecto
 bool BBSMPSHeuristicFixAndDiveLocks::shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	
 	if (node->getNodeDepth()<5)return true;
-	else depth=25;
+	//else depth=50;
 
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	BAContext &ctx= BBSMPSSolver::instance()->getBAContext();
@@ -336,9 +336,10 @@ bool BBSMPSHeuristicFixAndDiveLocks::shouldItRun(BBSMPSNode* node, denseBAVector
 		MPI_SUM,
 		ctx.comm());
 
-
 	nIntVars+=totalIntVars2;
 	numberOfFractionalVariables=+totalCount2;
+	//cout<<" about to return "<<numberOfFractionalVariables<<" "<<nIntVars<<" "<<((numberOfFractionalVariables*100/nIntVars)<100 )<<endl;
+	
 	if (nIntVars==0)return false;
 	return ((numberOfFractionalVariables*100/nIntVars)<40 );
 

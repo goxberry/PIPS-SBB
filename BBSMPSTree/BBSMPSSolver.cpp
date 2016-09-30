@@ -219,7 +219,7 @@ void BBSMPSSolver::printSolutionStatistics(double objLB){
   int itCounter=0;
   for (std::multiset<BBSMPSSolution,solutionComparison>::iterator it=solutionPool.begin(); it!=solutionPool.end(); ++it){
       BBSMPSSolution s = *it;
-      double solGap = fabs(s.getObjValue()-objLB)*100/(fabs(objLB)+10e-10);
+      double solGap = fabs(s.getObjValue()-objLB)*100/(fabs(s.getObjValue())+10e-10);
       BBSMPS_ALG_LOG_SEV(warning)<<"Solution:"<<itCounter<<":Solution Value:"<<s.getObjValue()<<":Time Of Discovery:"<<s.getTimeOfDiscovery()<<":Solution Gap:"<<solGap;
     itCounter++;
     }

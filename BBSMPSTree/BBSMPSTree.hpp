@@ -68,15 +68,17 @@
 #include "BBSMPSCuttingPlane.hpp"
 #include "BBSMPSCuttingPlaneGenerator01KP.hpp"
 #include "BBSMPSCuttingPlanesManager.hpp"
+#include "BBSMPSCuttingPlaneGeneratorGMI.hpp"
 
 
 //CONSTANTS FOR NOW:
 
 #define MIN_COMM_ITERS 50
 #define MAX_COMM_ITERS 5000
-#define RAMPDOWN_COMM_ITERS 5
+#define RAMPDOWN_COMM_ITERS 50
 #define COMM_TOL_INIT 0.1
 #define RAMPDOWN_MODE_TOLERANCE 0.3
+#define MAX_COMMUNICATION_SIZE 2000
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus);
 
@@ -198,6 +200,7 @@ private:
   int solsDiscoveredLimit;
   int tiLim;
 
+  int nSolvers;
   int nodeLim;
   double LPRelaxationTime;
   double PreProcessingTime;

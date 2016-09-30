@@ -374,7 +374,7 @@ BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule::BBSMPSParallelPseudo
     upPseudoCost.clear();
     downBranchingHistory.clear();
     upBranchingHistory.clear();
-    reliabilityFactor=9999999;
+    reliabilityFactor=4;
     everythingFirstStageInitialized=false;
     everythingSecondStageInitialized=false;
     denseBAVector sol(BBSMPSSolver::instance()->getLPRelaxation());

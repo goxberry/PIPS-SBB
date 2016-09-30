@@ -329,7 +329,7 @@ bool BBSMPSHeuristicFixAndDiveLocksScenarioPriority::runHeuristic(BBSMPSNode* no
 bool BBSMPSHeuristicFixAndDiveLocksScenarioPriority::shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){
 	
 	if (node->getNodeDepth()<5)return true;
-	else depth=25;
+	//else depth=25;
 
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	BAContext &ctx= BBSMPSSolver::instance()->getBAContext();
@@ -384,6 +384,6 @@ bool BBSMPSHeuristicFixAndDiveLocksScenarioPriority::shouldItRun(BBSMPSNode* nod
 	nIntVars+=totalIntVars2;
 	numberOfFractionalVariables=+totalCount2;
 	if (nIntVars==0)return false;
-	return ((numberOfFractionalVariables*100/nIntVars)<40 );
+	return ((numberOfFractionalVariables*100/nIntVars)<400 );
 
 }
