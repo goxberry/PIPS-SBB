@@ -66,7 +66,7 @@ bool BBSMPSHeuristicRINS::runHeuristic(BBSMPSNode* node, denseBAVector &nodeSolu
 	BBSMPSTree bb(rootNode,COIN_DBL_MIN,objUB);
 	bb.setVerbosity(false);
 	//Add simple heuristics to tree
-	BBSMPSHeuristicLockRounding *hr= new BBSMPSHeuristicLockRounding(0,15,"LockRounding");
+	BBSMPSHeuristicFixAndDiveLocks *hr= new BBSMPSHeuristicFixAndDiveLocks(0,15,"FixAndDiveLocks");
 	bb.loadLPHeuristic(hr);
 	
 	//Add time/node limit

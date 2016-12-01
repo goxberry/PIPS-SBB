@@ -31,6 +31,11 @@ public:
 	double getTimeOfDiscovery() const;
 	void setTimeOfDiscovery(const double _timeOfDiscovery);
 	int getSolNumber()const;
+
+	  int getSerializationSize()const;
+
+	 void serialize(std::vector<double> &vec)const;
+	 void initializeFromVector(std::vector<double> &vec,const BAContext &ctx,const BADimensions &dims);
 private:
 	//Class variable used to assign solution numbers upon instantiation
 	static int solCounter;

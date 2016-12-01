@@ -102,7 +102,7 @@ bool BBSMPSHeuristicCrossover::runHeuristic(BBSMPSNode* node, denseBAVector &nod
 		bb.setVerbosity(false);
 		//Add simple heuristics to tree
 		//bb.loadSimpleHeuristics();
-		BBSMPSHeuristicLockRounding *hr= new BBSMPSHeuristicLockRounding(1,15,"LockRounding");
+		BBSMPSHeuristicFixAndDiveLocks *hr= new BBSMPSHeuristicFixAndDiveLocks(0,15,"FixAndDiveLocks");
 		bb.loadLPHeuristic(hr);
 	
 		//Add time/node limit

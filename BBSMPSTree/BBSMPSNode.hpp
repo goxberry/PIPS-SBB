@@ -172,7 +172,7 @@ private:
   // objective function of the actual node (not its parent)
   double objectiveValue; 
 
-
+  std::map< pair< int , int > ,int> *WSMap;
   //Incremental cutting plane information relative to this node
   std::vector<BBSMPSCuttingPlane*> cuttingPlanes;
   vector<int> cuttingPlaneUids;

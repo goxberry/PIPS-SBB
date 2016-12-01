@@ -73,12 +73,12 @@
 
 //CONSTANTS FOR NOW:
 
-#define MIN_COMM_ITERS 50
-#define MAX_COMM_ITERS 5000
-#define RAMPDOWN_COMM_ITERS 50
+#define MIN_COMM_ITERS 10
+#define MAX_COMM_ITERS 500
+#define RAMPDOWN_COMM_ITERS 10
 #define COMM_TOL_INIT 0.1
-#define RAMPDOWN_MODE_TOLERANCE 0.3
-#define MAX_COMMUNICATION_SIZE 2000
+#define RAMPDOWN_MODE_TOLERANCE 0.1
+#define MAX_COMMUNICATION_SIZE 3200
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus);
 
@@ -223,6 +223,7 @@ double	bufferedUB;
 int 	bufferedItCounter;
 double	bufferedWorstLB;
 double	bufferedBestLB;
+int bufferedSmallestHeap;
 int	bufferedNodesLeft;
 int nSolsExchanged;
   vector<int> currentlyAppliedPlanes;
