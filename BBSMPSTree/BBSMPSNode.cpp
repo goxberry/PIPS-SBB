@@ -6,7 +6,7 @@ int BBSMPSNode::nodeCounter=0;
 
 
 // Construct node from {lower, upper} bounds, obj val of parent node
-BBSMPSNode::BBSMPSNode(double _objectiveValue, const std::vector< std::pair < BAIndex, variableState > > &states, int procOfOrigin):
+BBSMPSNode::BBSMPSNode(double _objectiveValue, const std::vector< std::pair < BAIndex, variableState > > &states, int procOfOrigin, int _nFracVals):
 partialStartState(states),
 procNumber(procOfOrigin) {
   parent =NULL;
@@ -15,7 +15,10 @@ procNumber(procOfOrigin) {
   nodeNumber=(++nodeCounter);
   nodeDepth=-1;
   if (nodeCounter==1) nodeDepth=0;
-   WSMap=NULL;
+  WSMap=NULL;
+  estimation=objectiveValue;
+  currentlyEnqueued=false;
+  nFracVals=_nFracVals;
 }
 
 
@@ -30,7 +33,10 @@ childrenAlive(sourceNode.childrenAlive),
 nodeNumber(sourceNode.nodeNumber),
 nodeDepth(sourceNode.nodeDepth),
 procNumber(sourceNode.procNumber),
-WSMap(NULL) {
+WSMap(NULL),
+estimation(sourceNode.getEstimation()),
+currentlyEnqueued(false),
+nFracVals(sourceNode.getFracVals()) {
 }
 
 BBSMPSNode::BBSMPSNode(BBSMPSNode* parent_ptr, std::vector<BBSMPSBranchingInfo>& bInfos, int procOfOrigin){
@@ -40,10 +46,12 @@ BBSMPSNode::BBSMPSNode(BBSMPSNode* parent_ptr, std::vector<BBSMPSBranchingInfo>&
     parent=parent_ptr;
     parent->incrementAliveChildren();
     nodeDepth=parent->getNodeDepth()+1;
+    estimation=parent->getObjective();
   }
   else {
     parent=NULL;
     nodeDepth=0;
+    estimation=INFINITY;
 
   }
 
@@ -52,26 +60,34 @@ BBSMPSNode::BBSMPSNode(BBSMPSNode* parent_ptr, std::vector<BBSMPSBranchingInfo>&
   childrenAlive=0;
   nodeNumber=(++nodeCounter);
   procNumber=procOfOrigin;
-   WSMap=NULL;
+  WSMap=NULL;
+
+  
+  currentlyEnqueued=false;
+  nFracVals=INFINITY;
+
 
 }
 
 BBSMPSNode::BBSMPSNode(int *intVector, double *dblVector){
 
   objectiveValue=dblVector[0];
+  estimation=dblVector[1];
   nodeNumber=intVector[0];
   procNumber=intVector[1];
   nodeDepth=intVector[2];
+  nFracVals=intVector[3];
+  currentlyEnqueued=false;
   parent=NULL;
   childrenAlive=0;
  // int numOfWS=intVector[3];
   //if (numOfWS!=0)cout<<"ERROR!!!!!! ON NODE NUMBER "<<nodeNumber<<endl;
-  partialStartState.resize(intVector[3]);
+  partialStartState.resize(intVector[4]);
   vector<variableState> auxVector(4,Basic);
   auxVector[1]=Basic;
   auxVector[2]=AtLower;
   auxVector[3]=AtUpper;
-  int ptr=5;
+  int ptr=6;
   for(int i=0; i<partialStartState.size();i++){
     partialStartState[i].first.scen=intVector[ptr];
     partialStartState[i].first.idx=intVector[ptr+1];
@@ -80,13 +96,13 @@ BBSMPSNode::BBSMPSNode(int *intVector, double *dblVector){
  
   }
    // //Incremental branching information relative to this node
-  branchingInfos.resize(intVector[4]);
+  branchingInfos.resize(intVector[5]);
 
   int intSerialSize=0;
   int dblSerialSize=0;
   BBSMPSBranchingInfo::getSerializationSize(intSerialSize, dblSerialSize);
   int intPtr=ptr;
-  int dblPtr=1;
+  int dblPtr=2;
   for (int i=0; i< branchingInfos.size(); i++){
     branchingInfos[i]=BBSMPSBranchingInfo(&intVector[intPtr],&dblVector[dblPtr]);
     intPtr+=intSerialSize;
@@ -336,16 +352,17 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
 
     BBSMPSBranchingInfo::getSerializationSize(intBranchSerialSize, dblBranchSerialSize);
 
-    intVectorSize=5+branchingInfoSize*intBranchSerialSize+nWSs*3;
-    dblVectorSize=1+branchingInfoSize*dblBranchSerialSize;
+    intVectorSize=6+branchingInfoSize*intBranchSerialSize+nWSs*3;
+    dblVectorSize=2+branchingInfoSize*dblBranchSerialSize;
   }
 
   void BBSMPSNode::serialize(int *intVector, double *dblVector){
     dblVector[0]=objectiveValue;
+    dblVector[1]=estimation;
     intVector[0]=nodeNumber;
     intVector[1]=procNumber;
     intVector[2]=nodeDepth;
-
+    intVector[3]=nFracVals;
     BBSMPSNode* n_ptr = parent;
     int branchingInfoSize=getBranchingInfoSize();
     while(n_ptr!=NULL){
@@ -353,15 +370,15 @@ void BBSMPSNode::copyCuttingPlanes(BBSMPSNode *node){
       n_ptr=n_ptr->parent;
     }
     
-    intVector[4]=branchingInfoSize;
+    intVector[5]=branchingInfoSize;
     
     if (WSMap==NULL) {
       WSMap = new std::map< pair< int , int > ,int>;
       collectPartialStateInfo(*WSMap);
     }
-    int ptrAfterWS=serializePartialStateInfo(&intVector[5],*WSMap);
-    intVector[3]=WSMap->size();
-    serializeBranchingInfo(&intVector[5+ptrAfterWS],&dblVector[1]);
+    int ptrAfterWS=serializePartialStateInfo(&intVector[6],*WSMap);
+    intVector[4]=WSMap->size();
+    serializeBranchingInfo(&intVector[6+ptrAfterWS],&dblVector[2]);
   }
 
   int BBSMPSNode::collectPartialStateInfo(std::map< pair< int , int > ,int> &_WSMap){

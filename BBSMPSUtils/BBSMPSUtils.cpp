@@ -123,4 +123,39 @@ bool isLPIntFeas(const denseBAVector& primalSoln) {
     return (isZero(colLB, tol) && isOne(colUB, tol));
   }
 
-  
+  int countNumberOfFractionalValues(const denseBAVector& primalSoln){
+
+  	int nFracVals=0;
+
+  	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
+	BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
+    
+    for (int scen = 0; scen < input.nScenarios(); scen++) {
+		if(ctx.assignedScenario(scen)) {
+
+			int col;
+			for (col = 0; col < input.nSecondStageVars(scen); col++)
+			{
+				bool isColInteger = input.isSecondStageColInteger(scen, col);
+				bool isValInteger = isIntFeas(primalSoln.getSecondStageVec(scen)[col], intTol);
+
+				nFracVals+=(isColInteger && !isValInteger);
+			}
+		}
+	}
+
+	MPI_Allreduce(MPI_IN_PLACE,&nFracVals, 1, MPI_INT,MPI_SUM,ctx.comm());
+
+  	int col;
+	for (col = 0; col < input.nFirstStageVars(); col++)
+	{
+
+		bool isColInteger = input.isFirstStageColInteger(col);
+		bool isValInteger = isIntFeas(primalSoln.getFirstStageVec()[col], intTol);
+
+		nFracVals+=(isColInteger && !isValInteger);
+	}
+	
+	return nFracVals;
+	
+}

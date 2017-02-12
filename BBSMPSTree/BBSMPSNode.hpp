@@ -36,7 +36,7 @@ public:
 
   // Construct node from {lower, upper} bounds, obj val of parent node
   BBSMPSNode(double _objectiveValue,const BAFlagVector<variableState> &states, int procOfOrigin);
-  BBSMPSNode(double _objectiveValue, const std::vector< std::pair < BAIndex, variableState > > &states, int procOfOrigin);
+  BBSMPSNode(double _objectiveValue, const std::vector< std::pair < BAIndex, variableState > > &states, int procOfOrigin, int _nFracVals);
   BBSMPSNode(BBSMPSNode* parent,std::vector<BBSMPSBranchingInfo>& bInfos, int procOfOrigin);
 
   //Construct node from serialized object
@@ -143,6 +143,30 @@ public:
 
   void printNode();
 
+  void setEnqueued(bool enqueued){
+    currentlyEnqueued=enqueued;
+  } 
+
+  bool isEnqueued(){
+    return currentlyEnqueued;
+  }
+
+  int getFracVals() const{
+    return nFracVals;
+  }
+
+  void setFracVals(int _nFracVals){
+    nFracVals=_nFracVals;
+  }
+
+  double getEstimation() const{
+    return estimation;
+  }
+
+  void setEstimation(double est){
+    estimation=est;
+  }
+
 private:
 
   //Class variable used to assign node numbers upon instantiation
@@ -153,6 +177,15 @@ private:
 
   //Depth of the node within the BB tree
   int nodeDepth;
+
+  //Node estimation
+  double estimation;
+
+  //is the node currently enqueued?
+  bool currentlyEnqueued;
+
+  //Number of fractional values in the LP relaxation
+  int nFracVals;
 
   //Pointer to the node's parent
   BBSMPSNode *parent;
@@ -176,6 +209,8 @@ private:
   //Incremental cutting plane information relative to this node
   std::vector<BBSMPSCuttingPlane*> cuttingPlanes;
   vector<int> cuttingPlaneUids;
+
+
   // TODO: Local cut objects; Global cuts are stored in the B&B tree.
 
   void auxCopyAllBranchingInformation(std::vector<BBSMPSBranchingInfo> &biVector);

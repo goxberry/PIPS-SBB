@@ -12,6 +12,17 @@ bool boundVectorComparator (pair <double, pair<int, int> > i, pair <double, pair
  return (i.first<j.first); 
  }
 
+double BBSMPSTree::calculateEstimation(BBSMPSNode* node){
+
+  double ub=node->getObjective();
+  if (BBSMPSSolver::instance()->getSolPoolSize()>0) ub=BBSMPSSolver::instance()->getSoln(0).getObjValue();
+  else return ub;
+
+  double estimation=node->getObjective()+((ub-BBSMPSTree::rootNode->getObjective())/BBSMPSTree::rootNode->getFracVals())*node->getFracVals();
+  //cout<<"ESTIMATION CALC "<<estimation<<" "<<ub<<" "<<BBSMPSTree::rootNode->getObjective()<<" "<<BBSMPSTree::rootNode->getFracVals()<<" "<<node->getFracVals()<<" "<<node->getObjective()<<endl;
+  return estimation;
+
+}
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus) {
 	
@@ -158,10 +169,15 @@ initializationTime(0)
     std::vector< std::pair < BAIndex, variableState > > emptyStates;
 
 int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
-    BBSMPSNode *rootNode= new BBSMPSNode(lpObj,emptyStates,BBSMPSSolver::instance()->getSBBMype());
+//TODO: set proper frac vals
+    BBSMPSNode *rootNode= new BBSMPSNode(lpObj,emptyStates,BBSMPSSolver::instance()->getSBBMype(),countNumberOfFractionalValues(ubPrimalSolution));
+   	BBSMPSTree::rootNode= new BBSMPSNode(lpObj,emptyStates,BBSMPSSolver::instance()->getSBBMype(),countNumberOfFractionalValues(ubPrimalSolution));
+   	rootNode->setEstimation(calculateEstimation(rootNode));
+    rootNode->setEnqueued(true);
 
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Pushing root node onto B&B tree.";
     heap.insert(rootNode);
+    heapOrderedByLB.insert(rootNode);
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Exiting B&B constructor.";
 
    //BBSMPSMaxFracBranchingRule *mfbr= new BBSMPSMaxFracBranchingRule(10);
@@ -185,7 +201,7 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
     nodesFathomed=0;
     nodesBecameInteger=0;
     totalBbIterationsDone=0;
-    BBSMPSTree::rootNode=rootNode;
+    
     inTermination=false;
     request0=new MPI_Request();
     request1=new MPI_Request();
@@ -263,8 +279,10 @@ initializationTime(0)
     if ((lpObj - compTol) >= objLB) objLB = lpObj;
 
     
+    node->setEnqueued(true);
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Pushing root node onto B&B tree.";
     heap.insert(node);
+    heapOrderedByLB.insert(node);
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Exiting B&B constructor.";
 
     BBSMPSMaxFracSmallestScenarioFirstBranchingRule *mfbr= new BBSMPSMaxFracSmallestScenarioFirstBranchingRule(10);
@@ -308,6 +326,8 @@ BBSMPSTree::~BBSMPSTree(){
 		
 		heap.erase(heap.begin());
 	}
+
+	heapOrderedByLB.clear();
 
 	delete request0;
 	delete request1;
@@ -371,6 +391,22 @@ void BBSMPSTree::generateIncrementalWarmState(BBSMPSNode* node, const BAFlagVect
 
 
 }
+
+double BBSMPSTree::getCurrentLB(){
+	while (heapOrderedByLB.size()>0){
+		if (*(heapOrderedByLB.begin())==NULL)heapOrderedByLB.erase(heapOrderedByLB.begin());
+		else{
+			BBSMPSNode *currentNode_ptr=*(heapOrderedByLB.begin());
+			if (!currentNode_ptr->isEnqueued())heapOrderedByLB.erase(heapOrderedByLB.begin());
+			else {
+				//cout<<"objective returned "<<currentNode_ptr->getParentObjective()<<endl;
+				return currentNode_ptr->getParentObjective();
+			}
+		} 
+	}
+
+	return INFINITY;
+}
 void BBSMPSTree::checkSequentialTerminationConditions(){
 
 	int mype=BBSMPSSolver::instance()->getMype();
@@ -402,6 +438,7 @@ void BBSMPSTree::checkSequentialTerminationConditions(){
 		return ;
 	}
 }
+
 
 
 
@@ -502,6 +539,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		previousTopOfTheQueue=(*(heap.begin()))->getObjective();
 		/* Get top-most node and pop it off of heap. */
 		BBSMPSNode *currentNode_ptr=*(heap.begin());
+		currentNode_ptr->setEnqueued(false);
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Copying node " << currentNode_ptr->getNodeNumber() << " off tree.";
 	//	//cout<<"COPYING NODE "<<heap.size()<<endl;
 		/*int dblSerialSize=0;
@@ -518,7 +556,8 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		heap.erase(heap.begin());
 
 		if (nodesel == BestBound) {
-			objLB=currentNode_ptr->getParentObjective();
+
+			objLB=min(getCurrentLB(),currentNode_ptr->getObjective());
 			if ((objLB - compTol) >= objUB) {
 				objLB=objUB;
 				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Can stop if best bound node selection rule";
@@ -531,6 +570,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 					
 				}
 				heap.clear();
+				heapOrderedByLB.clear();
 				continue; 
 			}
 			
@@ -632,6 +672,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		}
 		lpStatus = rootSolver.getStatus();
 		primalSoln=denseBAVector(rootSolver.getPrimalSolution());
+
 		isLPoptimal = (Optimal == lpStatus);
 		ps=BAFlagVector<variableState>(BBSMPSSolver::instance()->getOriginalWarmStart());
 		currentNode_ptr->reconstructWarmStartState(ps);	
@@ -672,6 +713,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			double lpObj = rootSolver.getObjective();
 
 			currentNode_ptr->setObjective(lpObj);
+			currentNode_ptr->setFracVals(countNumberOfFractionalValues(primalSoln));
 
 			if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Checking for value dominance...";
 
@@ -740,8 +782,10 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				for (int i=0; i<children.size();i++){
 					generateIncrementalWarmState(children[i], ps, states);
 					children[i]->setObjective(lpObj);
-
+					children[i]->setEnqueued(true);
+					children[i]->setEstimation(calculateEstimation(currentNode_ptr));
 					heap.insert(children[i]);
+					heapOrderedByLB.insert(children[i]);
 				}
 
 			}
@@ -781,7 +825,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
 		bbIterationCounter++;
-		if (0 == mype &&0==BBSMPSMyPe && verbosityActivated && bbIterationCounter%1==0) {
+		if (0 == mype &&0==BBSMPSMyPe && verbosityActivated && bbIterationCounter%1000==0) {
 			double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 			BBSMPS_ALG_LOG_SEV(warning)<<"\n----------------------------------------------------\n"<<
 			"Iteration PARBB "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
@@ -857,6 +901,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				
 			}
 			heap.clear();
+			heapOrderedByLB.clear();
 	   }
 	}
 
@@ -936,6 +981,9 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 
 		/* Get top-most node and pop it off of heap. */
 		BBSMPSNode *currentNode_ptr=*(heap.begin());
+		//cout<<"OBTAINED A NODE WITH ESTIMATION "<<currentNode_ptr->getEstimation()<<" LB "<<currentNode_ptr->getObjective()<<endl;
+		
+		currentNode_ptr->setEnqueued(false);
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Copying node " << currentNode_ptr->getNodeNumber() << " off tree.";
 //BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
 		//MPI_Barrier(ctx.comm());
@@ -954,7 +1002,8 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		heap.erase(heap.begin());
 
 		if (nodesel == BestBound) {
-			objLB=currentNode_ptr->getParentObjective();
+
+			objLB=min(getCurrentLB(),currentNode_ptr->getObjective());
 			if ((objLB - compTol) >= objUB) {
 				objLB=objUB;
 				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Can stop if best bound node selection rule";
@@ -967,6 +1016,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 					
 				}
 				heap.clear();
+				heapOrderedByLB.clear();
 				continue; 
 			}
 			
@@ -1108,7 +1158,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			double lpObj = rootSolver.getObjective();
 
 			currentNode_ptr->setObjective(lpObj);
-
+			currentNode_ptr->setFracVals(countNumberOfFractionalValues(primalSoln));
 			if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Checking for value dominance...";
 
 			if ((lpObj - compTol) >= objUB) {
@@ -1174,8 +1224,10 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				for (int i=0; i<children.size();i++){
 					generateIncrementalWarmState(children[i], ps, states);
 					children[i]->setObjective(lpObj);
-
+					children[i]->setEnqueued(true);
+					children[i]->setEstimation(calculateEstimation(currentNode_ptr));
 					heap.insert(children[i]);
+					heapOrderedByLB.insert(children[i]);
 				}
 
 			}
@@ -1616,6 +1668,8 @@ int BBSMPSTree::communicate(){
 		//	//cout<<"PACKING!"<<(*it)->getNodeNumber()<<" "<<intPtr<<" "<<dblPtr<<"!!";
 			(*it)->serialize(&greatIntBuffer[intPtr],&greatDblBuffer[dblPtr]);
 		//	//cout<<" the tree size used to be "<<heap.size();
+			(*it)->setEnqueued(false);
+			(*it)->eliminate();
 			heap.erase(heap.begin());
 		//	//cout<<" and it now is "<<heap.size()<<endl;
 			
@@ -1713,7 +1767,9 @@ int BBSMPSTree::communicate(){
 				
 				////cout<<" got the obj of th enide LP to value "<<node->getObjective()<<" the node at the top is node "<<node->getNodeNumber()<<endl;
 		//		(node)->printNode();
+				node->setEnqueued(true);
 				heap.insert(node);
+				heapOrderedByLB.insert(node);
 				//delete node;
 			}
 		}
@@ -1721,9 +1777,9 @@ int BBSMPSTree::communicate(){
 
 	if (heap.size()>0){
 		////cout<<" the size of the heap is "<<heap.size()<<endl;
-		BBSMPSNode *currentNode_ptr=*(heap.begin());
+		
 		//Update LB/UB if necessary
-		objLB=currentNode_ptr->getObjective();
+		objLB=getCurrentLB();
 	}
 
 	

@@ -46,5 +46,6 @@ extern  bool isZero(double x, double tol);
 extern  bool isOne(double x, double tol);
 extern  bool isBinary(double colLB, double colUB, double tol);
 
+extern  int countNumberOfFractionalValues(const denseBAVector& primalSoln);
 
 #endif

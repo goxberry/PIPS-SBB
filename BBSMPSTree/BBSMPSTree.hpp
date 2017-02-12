@@ -92,7 +92,7 @@ bool operator> (const BBSMPSNode& left,
   const BBSMPSNode& right);
 
 
-class nodePtrComparison
+class nodePtrLBComparison
 {
 public:
   bool operator() (const BBSMPSNode* lhs, const BBSMPSNode* rhs) const
@@ -101,6 +101,22 @@ public:
     return (lhs->getNodeNumber() < rhs->getNodeNumber());
   }
   return (lhs->getParentObjective() < rhs->getParentObjective());
+  
+ }
+};
+
+class nodePtrEstimationComparison
+{
+public:
+  bool operator() (const BBSMPSNode* lhs, const BBSMPSNode* rhs) const
+  {
+  if(lhs->getEstimation() == rhs->getEstimation()){
+    if(lhs->getParentObjective() == rhs->getParentObjective()){
+      return (lhs->getNodeNumber() < rhs->getNodeNumber());
+    }
+    return (lhs->getParentObjective() < rhs->getParentObjective());
+  }
+  return (lhs->getEstimation() < rhs->getEstimation());
   
  }
 };
@@ -244,8 +260,8 @@ int nSolsExchanged;
   // max-heap data structure with nodes
   // TODO: Refactor to vector<BranchAndBound> & replace w/ make_heap, push_heap, pop_heap
   //std::priority_queue<BBSMPSNode, std::vector<BBSMPSNode>, std::less<BBSMPSNode> > heap; // max-heap
-  std::multiset<BBSMPSNode*, nodePtrComparison > heap; // min-heap
-
+  std::multiset<BBSMPSNode*, nodePtrEstimationComparison > heap; // min-heap
+  std::multiset<BBSMPSNode*, nodePtrLBComparison > heapOrderedByLB; // min-heap
   // Solver status; can only be in the set {LoadedFromFile, Initialized,
   // PrimalFeasible, Optimal, ProvenUnbounded, ProvenInfeasible, Stopped}
   // because there is no duality theory, and currently, the only interface
@@ -255,7 +271,7 @@ int nSolsExchanged;
 
   static BBSMPSNode* rootNode;
 
-
+  double getCurrentLB();
 
     // Auxiliary functions for branching
   int getFirstStageMinIntInfeasCol(const denseBAVector& primalSoln);
@@ -273,6 +289,8 @@ int communicate();
   
   // Make default constructor impossible to call.
   BBSMPSTree();
+
+  double calculateEstimation(BBSMPSNode* node);
 
 void checkSequentialTerminationConditions();
 } ;
