@@ -1399,6 +1399,10 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
   	heuristicsManager.addMIPHeuristic(hr5);
     BBSMPSHeuristicSolutionPolishing *hr6= new BBSMPSHeuristicSolutionPolishing(0,1,"BBSMPSHeuristicSolutionPolishing",1);
   	heuristicsManager.addMIPHeuristic(hr6);*/
+
+  	BBSMPSHeuristicScenDecom *hr4= new BBSMPSHeuristicScenDecom(0,50,"ScenDecom",200, 100, false);
+  	heuristicsManager.addMIPHeuristic(hr4);
+  	
   }
 
 

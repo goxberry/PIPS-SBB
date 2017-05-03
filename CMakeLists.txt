@@ -100,10 +100,11 @@ message(STATUS "CBC_LIBRARY_DIRS: ${CBC_LIBRARY_DIRS}")
 find_library(CBCSolver_LIB NAMES libCbcSolver.a CbcSolver HINTS ${CBC_LIBRARY_DIRS})
 find_library(CBC_LIB NAMES libCbc.a Cbc HINTS ${CBC_LIBRARY_DIRS})
 find_library(OSICLP_LIB NAMES libOsiClp.a OsiClp HINTS ${CBC_LIBRARY_DIRS})
+find_library(OSICBC_LIB NAMES libOsiCbc.a OsiCbc HINTS ${CBC_LIBRARY_DIRS})
 find_library(OSI_LIB NAMES libOsi.a Osi HINTS ${CBC_LIBRARY_DIRS})
 find_library(CGL_LIB NAMES libCgl.a Cgl HINTS ${CBC_LIBRARY_DIRS})
 
-set(CBC_LIBS ${CBCSolver_LIB} ${CBC_LIB} ${CGL_LIB} ${OSICLP_LIB} ${OSI_LIB})
+set(CBC_LIBS ${OSICBC_LIB} ${CBCSolver_LIB} ${CBC_LIB} ${CGL_LIB} ${OSICLP_LIB} ${OSI_LIB})
 include_directories(${COINUTILS_INCLUDE_DIRS})
 message(STATUS "CBC_LIBS:=${CBC_LIBS}")
 message(STATUS "CBC_INC:=${COINUTILS_INCLUDE_DIRS}")
@@ -182,8 +183,9 @@ add_library(pipssbb
 	BBSMPSHeuristics/BBSMPSHeuristicSolutionRINS.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicBestRINSJump.cpp
 	BBSMPSHeuristics/BBSMPSHeuristicSolutionPolishing.cpp
+	BBSMPSHeuristics/BBSMPSHeuristicScenDecom.cpp
 	BBSMPSTree/BBSMPSSolver.cpp
 	BBSMPSTree/BBSMPSSolverState.cpp
 	BBSMPSTree/BBSMPSSolution.cpp)
 add_executable(pipssbbSMPS pipssbbSMPS.cpp)
-target_link_libraries(pipssbbSMPS pipssbb pipss stochInput ${COIN_LIBS} ${MATH_LIBS} ${Boost_LIBRARIES})
+target_link_libraries(pipssbbSMPS pipssbb pipss stochInput ${CBC_LIBS} ${CLP_LIB} ${COIN_LIBS} ${MATH_LIBS} ${Boost_LIBRARIES})

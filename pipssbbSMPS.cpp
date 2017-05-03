@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
 
   bb.loadSimpleHeuristics();
 
-    bb.loadMIPHeuristics();
+   // bb.loadMIPHeuristics();
   bb.setTimeLimit(3600);
   //bb.setNodeLimit(5000);
   //bb.loadCuttingPlanes();

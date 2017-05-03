@@ -58,6 +58,7 @@
 #include "BBSMPSHeuristicFixAndDiveScenarioPriority.hpp"
 #include "BBSMPSHeuristicFixAndDiveLocksScenarioPriority.hpp"
 #include "BBSMPSHeuristicCrossover.hpp"
+#include "BBSMPSHeuristicScenDecom.hpp"
 #include "BBSMPSHeuristicLockRounding.hpp"
 #include "BBSMPSHeuristicMagic.hpp"
 #include "BBSMPSHeuristicSolutionRINS.hpp"         
