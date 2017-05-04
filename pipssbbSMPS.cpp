@@ -42,11 +42,11 @@ int main(int argc, char **argv) {
     return 1;
   }
   // Set PIPS logging level.
-  
-  BBSMPSLogging::init_logging(3);  
-  //PIPSLogging::init_logging(1 ); 
 
-  
+  BBSMPSLogging::init_logging(3);
+  //PIPSLogging::init_logging(1 );
+
+
         // Get SMPS file name and open SMPS file
   string smpsrootname(argv[1]);
 
@@ -64,9 +64,9 @@ int main(int argc, char **argv) {
 
   bb.loadSimpleHeuristics();
 
-   // bb.loadMIPHeuristics();
-  bb.setTimeLimit(3600);
-  //bb.setNodeLimit(5000);
+  //  bb.loadMIPHeuristics();
+  bb.setTimeLimit(300);
+  bb.setNodeLimit(500);
   //bb.loadCuttingPlanes();
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) <<"Calling branch-and-bound.";
  // bb.runParallelSBInitialization();

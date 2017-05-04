@@ -9,7 +9,7 @@ bool boundVectorComparator (pair <double, pair<int, int> > i, pair <double, pair
 		if (i.second.first==j.second.first)return i.second.second<j.second.second;
 		return i.second.first<j.second.first;
 	}
- return (i.first<j.first); 
+ return (i.first<j.first);
  }
 
 double BBSMPSTree::calculateEstimation(BBSMPSNode* node){
@@ -25,7 +25,7 @@ double BBSMPSTree::calculateEstimation(BBSMPSNode* node){
 }
 // Outputs solver status:
 void outputLPStatus(solverState lpStatus) {
-	
+
 	string status;
 	switch(lpStatus) {
 		case Uninitialized:
@@ -77,7 +77,7 @@ bool operator> (const BBSMPSNode& left,
 }
 
 
-BBSMPSTree::BBSMPSTree(const SMPSInput& smps,int _nSolvers): 
+BBSMPSTree::BBSMPSTree(const SMPSInput& smps,int _nSolvers):
 objUB(COIN_DBL_MAX),
 objLB(-COIN_DBL_MAX),
 optGapTol(1e-6),
@@ -97,7 +97,7 @@ initializationTime(0)
 {
 	double timeStart=MPI_Wtime();
 
-	BBSMPSSolver::initialize(smps,_nSolvers); 
+	BBSMPSSolver::initialize(smps,_nSolvers);
 	double timeStampPreProc=MPI_Wtime();
 	PreProcessingTime=timeStampPreProc-timeStart;
    // if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Calling B&B tree constructor.";
@@ -107,8 +107,8 @@ initializationTime(0)
     // value from parent LP, initialize a node, and insert onto heap to start.
     assert (heap.empty()); // heap should be empty to start
 
-	
-    
+
+
     PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
     const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
     BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
@@ -135,7 +135,7 @@ initializationTime(0)
     rootSolver.go();
 
    // BBSMPSCuttingPlane bcp;
-		//for (int i=0; i<=bbIterationCounter; i++)	
+		//for (int i=0; i<=bbIterationCounter; i++)
 	//bcp.applyCuttingPlane();
 
     LPRelaxationTime=MPI_Wtime()-timeStampPreProc;
@@ -150,14 +150,14 @@ initializationTime(0)
     ubPrimalSolution.allocate(dimsSlacks, ctx, PrimalVector);
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Getting primal solution";
     ubPrimalSolution.copyFrom(rootSolver.getPrimalSolution());
-    //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "MIP Primal solution updated"; 
+    //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "MIP Primal solution updated";
     BBSMPSSolver::instance()->setLPRelaxation(ubPrimalSolution);
     // Update state of primal variables + slacks; slacks must be included
     // because these are used in a reformulation of the problem to standard
     // form: Ax + s = b, s >= 0.
 
     BAFlagVector<variableState> states(dimsSlacks, ctx, PrimalVector);
-    
+
     rootSolver.getStates(states);
     BBSMPSSolver::instance()->setOriginalWarmStart(states);
     // Update global lower bound; really need to check feasibility, etc.
@@ -187,10 +187,10 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
    branchingRuleManager.addBranchingRule(mfbr);
 
 //BBSMPSPseudoCostSmallestScenarioFirstBranchingRule *mfbr2= new BBSMPSPseudoCostSmallestScenarioFirstBranchingRule(100);
-   
+
   // 	  branchingRuleManager.addBranchingRule(mfbr2);
 
-   
+
    // BBSMPSMinFracBranchingRule *mfbr= new BBSMPSMinFracBranchingRule(10);
    // branchingRuleManager.addBranchingRule(mfbr);
 
@@ -201,7 +201,7 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
     nodesFathomed=0;
     nodesBecameInteger=0;
     totalBbIterationsDone=0;
-    
+
     inTermination=false;
     request0=new MPI_Request();
     request1=new MPI_Request();
@@ -244,7 +244,7 @@ int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 
 
 
-BBSMPSTree::BBSMPSTree(BBSMPSNode *node, double lb, double ub ): 
+BBSMPSTree::BBSMPSTree(BBSMPSNode *node, double lb, double ub ):
 objUB(ub),
 objLB(lb),
 optGapTol(1e-6),
@@ -272,13 +272,13 @@ initializationTime(0)
     // Get {lower, upper} bounds on decision variables, lower bound on objective function
     // value from parent LP, initialize a node, and insert onto heap to start.
     assert (heap.empty()); // heap should be empty to start
-    
+
     PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
-   
+
     double lpObj = -INFINITY;
     if ((lpObj - compTol) >= objLB) objLB = lpObj;
 
-    
+
     node->setEnqueued(true);
     //if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Pushing root node onto B&B tree.";
     heap.insert(node);
@@ -323,7 +323,7 @@ BBSMPSTree::~BBSMPSTree(){
 	while (!heap.empty()){
 		BBSMPSNode *currentNode_ptr=*(heap.begin());
 		currentNode_ptr->eliminate();
-		
+
 		heap.erase(heap.begin());
 	}
 
@@ -353,7 +353,7 @@ void BBSMPSTree::generateIncrementalWarmState(BBSMPSNode* node, const BAFlagVect
 	BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
 
 	std::vector< std::pair < BAIndex, variableState > > changes;
-	
+
 
 	const denseFlagVector<variableState> &stageVec = currentState.getFirstStageVec();
 	const denseFlagVector<variableState> &stageVec2 = originalState.getFirstStageVec();
@@ -384,7 +384,7 @@ void BBSMPSTree::generateIncrementalWarmState(BBSMPSNode* node, const BAFlagVect
 		}
 	}
 
-	
+
 
 	node->setIncrementalWarmStartState(changes);
 
@@ -402,7 +402,7 @@ double BBSMPSTree::getCurrentLB(){
 				//cout<<"objective returned "<<currentNode_ptr->getParentObjective()<<endl;
 				return currentNode_ptr->getParentObjective();
 			}
-		} 
+		}
 	}
 
 	return INFINITY;
@@ -415,7 +415,7 @@ void BBSMPSTree::checkSequentialTerminationConditions(){
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Time Limit reached.";
 
 		inTermination=true;
-		
+
 		return ;
 	}
 	if (BBSMPSSolver::instance()->getSolPoolSize()-solsDiscoveredInit>=solsDiscoveredLimit){
@@ -427,14 +427,14 @@ void BBSMPSTree::checkSequentialTerminationConditions(){
 	if (bbIterationCounter>nodeLim){
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Node Limit reached.";
 		inTermination=true;
-		
+
 		return;
 	}
 
 	if (heap.size()==0){
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Heap is empty.";
 		inTermination=true;
-	
+
 		return ;
 	}
 }
@@ -450,7 +450,7 @@ void BBSMPSTree::removeCuts(){
 	PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
 	const BADimensionsSlacks &dimsSlacks= BBSMPSSolver::instance()->getBADimensionsSlacks();
 	const BADimensionsSlacks &originalDimsSlacks= BBSMPSSolver::instance()->getOriginalBADimensionsSlacks();
-	
+
 	denseBAVector lb(BBSMPSSolver::instance()->getOriginalLB());
 	denseBAVector ub(BBSMPSSolver::instance()->getOriginalUB());
 	rootSolver.setLB(lb);
@@ -461,11 +461,11 @@ void BBSMPSTree::removeCuts(){
 	for (int scen = 0; scen < input.nScenarios(); scen++) {
 		if(ctx.assignedScenario(scen)) {
 			if (originalDimsSlacks.inner.numSecondStageCons(scen) < dimsSlacks.inner.numSecondStageCons(scen)){
-				rootSolver.deleteLastSecondStageConsecutiveRows(scen,dimsSlacks.inner.numSecondStageCons(scen)-originalDimsSlacks.inner.numSecondStageCons(scen));	
+				rootSolver.deleteLastSecondStageConsecutiveRows(scen,dimsSlacks.inner.numSecondStageCons(scen)-originalDimsSlacks.inner.numSecondStageCons(scen));
 				modelChanged=true;
 			}
 			if (originalDimsSlacks.inner.numSecondStageVars(scen) < dimsSlacks.inner.numSecondStageVars(scen)){
-				rootSolver.deleteLastSecondStageConsecutiveColumns(scen,dimsSlacks.inner.numSecondStageVars(scen)-originalDimsSlacks.inner.numSecondStageVars(scen));	
+				rootSolver.deleteLastSecondStageConsecutiveColumns(scen,dimsSlacks.inner.numSecondStageVars(scen)-originalDimsSlacks.inner.numSecondStageVars(scen));
 				modelChanged=true;
 			}
 		}
@@ -473,11 +473,11 @@ void BBSMPSTree::removeCuts(){
 	}
 
 	if (originalDimsSlacks.inner.numFirstStageCons() < dimsSlacks.inner.numFirstStageCons()){
-		rootSolver.deleteLastFirstStageConsecutiveRows(dimsSlacks.inner.numFirstStageCons()-originalDimsSlacks.inner.numFirstStageCons());	
+		rootSolver.deleteLastFirstStageConsecutiveRows(dimsSlacks.inner.numFirstStageCons()-originalDimsSlacks.inner.numFirstStageCons());
 		modelChanged=true;
 	}
 	if (originalDimsSlacks.inner.numFirstStageVars() < dimsSlacks.inner.numFirstStageVars()){
-		rootSolver.deleteLastFirstStageConsecutiveColumns(dimsSlacks.inner.numFirstStageVars()-originalDimsSlacks.inner.numFirstStageVars());	
+		rootSolver.deleteLastFirstStageConsecutiveColumns(dimsSlacks.inner.numFirstStageVars()-originalDimsSlacks.inner.numFirstStageVars());
 		modelChanged=true;
 	}
 	if (modelChanged){
@@ -493,7 +493,7 @@ void BBSMPSTree::runParallelSBInitialization(){
 	//set up the branching rule
 	double beginningTime=MPI_Wtime();
 	branchingRuleManager.freeResources();
-	
+
 	BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule *ppcbr= new BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule(100);
     //BBSMPSParallelPseudoCostBranchingRule *ppcbr= new BBSMPSParallelPseudoCostBranchingRule(100);
     branchingRuleManager.addBranchingRule(ppcbr);
@@ -508,11 +508,11 @@ void BBSMPSTree::runParallelSBInitialization(){
 int BBSMPSProcs=BBSMPSContext.nprocs();
 	do  {
 	////cout<<"content of the while "<<(!doWeHaveEnoughWork && fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))<commTol)<<endl;
-		
+
 		int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
 		////cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
 		PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
-		
+
 		/* If heap is empty, update status to Stopped (if possible) and break. */
 		if (inTermination) {
 			//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Heap is empty.";
@@ -551,7 +551,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		//cout<<"//--------------"<<endl;
 		for (int i=0; i< serialVectorInt.size(); i++)//cout<<serialVectorInt[i]<<" ";
 			//cout<<"//--------------"<<endl;
-		for (int i=0; i< serialVectorDbl.size(); i++)//cout<<serialVectorDbl[i]<<" ";	
+		for (int i=0; i< serialVectorDbl.size(); i++)//cout<<serialVectorDbl[i]<<" ";
 			//cout<<"//--------------"<<endl;*/
 		heap.erase(heap.begin());
 
@@ -567,13 +567,13 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				std::set<BBSMPSNode*>::iterator it=heap.begin();
 				for (it; it!=heap.end(); it++){
 					(*it)->eliminate();
-					
+
 				}
 				heap.clear();
 				heapOrderedByLB.clear();
-				continue; 
+				continue;
 			}
-			
+
 		}
 
 		vector<int> nodeCuttingPlaneUids;
@@ -597,10 +597,10 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		denseBAVector lb(BBSMPSSolver::instance()->getOriginalLB());
 		denseBAVector ub(BBSMPSSolver::instance()->getOriginalUB());
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "getting branching info.";
-		
+
 		currentNode_ptr->getAllBranchingInformation(lb,ub);
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Setting bounds.";
-		
+
 		rootSolver.setLB(lb);
 		rootSolver.setUB(ub);
 
@@ -627,7 +627,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		// hold upon return from rootSolver.
 		if (0 == mype) outputLPStatus(lpStatus);
 
-		bool isLPinfeasible = (ProvenInfeasible == lpStatus); 
+		bool isLPinfeasible = (ProvenInfeasible == lpStatus);
 		//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "isLPinfeasible = " << isLPinfeasible;
 		bool isLPunbounded = (ProvenUnbounded == lpStatus);
 		//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "isLPunbounded = " << isLPunbounded ;
@@ -645,7 +645,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			currentNode_ptr->eliminate();
 			nodesFathomed++;
 		////cout<<"isLPinfeasible "<<heap.size()<<endl;
-			
+
 			continue;
 		}
 
@@ -664,7 +664,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		assert (isLPoptimal); // Error if not optimal.
 ////cout<<"we got here -1 "<<heap.size()<<endl;
 		denseBAVector primalSoln(rootSolver.getPrimalSolution());
-		
+
 		bool newCuttingPlanes=cuttingPlanesManager.generateCuttingPlanes(currentNode_ptr,primalSoln);
 
 		if(newCuttingPlanes){
@@ -675,7 +675,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 
 		isLPoptimal = (Optimal == lpStatus);
 		ps=BAFlagVector<variableState>(BBSMPSSolver::instance()->getOriginalWarmStart());
-		currentNode_ptr->reconstructWarmStartState(ps);	
+		currentNode_ptr->reconstructWarmStartState(ps);
 		// TODO: Combine the integrality and branching steps later
 
 		/* If LP solution is optimal, can fathom by value dominance. */
@@ -722,22 +722,22 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 
 				currentNode_ptr->eliminate();
 				nodesFathomed++;
-				
+
 				continue;
 			}
-				
-			
-			
+
+
+
 		}
 ////cout<<"we got here "<<heap.size()<<endl;
-		
+
 		/* Get primal solution */
 		//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Getting primal solution...";
-		
+
 		denseBAVector originalSpaceSolution;
-		originalSpaceSolution.allocate(BBSMPSSolver::instance()->getOriginalBADimensionsSlacks(), BBSMPSSolver::instance()->getBAContext(), PrimalVector); 
+		originalSpaceSolution.allocate(BBSMPSSolver::instance()->getOriginalBADimensionsSlacks(), BBSMPSSolver::instance()->getBAContext(), PrimalVector);
 		originalSpaceSolution.copyAndShrinkToDims(primalSoln);
-		
+
 		/* If primal solution is integral: */
 		//  - Update solver status to PrimalFeasible
 		//  - Check if upper bound improved
@@ -761,10 +761,10 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				BBSMPSSolver::instance()->addSolutionToPool(aux);
 			}
 			currentNode_ptr->eliminate();
-			
+
 
 			nodesBecameInteger++;
-			
+
 		}
 		else{
 		//	//cout<<"we got here 2 "<<heap.size()<<endl;
@@ -773,7 +773,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
 			BAFlagVector<variableState> states(dimsSlacks, ctx, PrimalVector);
 			rootSolver.getStates(states);
-	       
+
 			vector<BBSMPSNode*> children;
 		//	//cout<<"calling branch!!! "<<heap.size()<<endl;
 			branchingRuleManager.branch(currentNode_ptr,children,originalSpaceSolution);
@@ -791,7 +791,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			}
 			// //removeCuts();
 			// heuristicsManager.runLPHeuristics(currentNode_ptr,primalSoln);
-		
+
 
 			// if(heuristicsManager.willMIPHeuristicsRun(currentNode_ptr,originalSpaceSolution)){
 			// 	removeCuts();
@@ -805,7 +805,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		upper bound and best lower bound on objective function is
 		less than the optimality gap, stop the solver and return the
 		feasible solution corresponding to the best upper bound. */
-		
+
 		double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 		/*if (gap <= optGapTol) {
 			assert(objLB <= objUB); // this statement could be tripped by numerical error
@@ -813,7 +813,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Optimality gap reached! Terminating.";
 			break;
 		}*/
-		
+
 		if (heap.size()> BBSMPSProcs){
 			double topLB=(*(heap.begin()))->getObjective();
 			std::set<BBSMPSNode*>::iterator it=heap.begin();
@@ -833,7 +833,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		}
 	}while (!doWeHaveEnoughWork);// || fabs(fabs(objUB-previousTopOfTheQueue)*100/(fabs(objUB)+10e-10)-fabs(objUB-objLB)*100/(fabs(objUB)+10e-10))>=commTol);
 
-	
+
 	denseBAVector v1,v2,v3,v4;
 	ppcbr->getCostHistory(v1,v2,v3,v4);
 	initializationParallelBranchingCommTime=ppcbr->getCommunicationTime();
@@ -898,7 +898,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 	   		std::set<BBSMPSNode*>::iterator it=heap.begin();
 			for (it; it!=heap.end(); it++){
 				(*it)->eliminate();
-				
+
 			}
 			heap.clear();
 			heapOrderedByLB.clear();
@@ -912,8 +912,8 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 	/* While heap not empty and there are still nodes in tree */
 	// TODO: Add tolerance on optimality gap, time limit option.
 	while (true) {
-		
-		
+
+
 		////cout<<" ABOUT TO ENTER "<<BBSMPSMyPe<<" "<<mype<<" "<<( (counterToLastIter%20==0 && commDone) || heap.size()==0 || (!commDone && heap.size()>16))<<endl;
 		if(!communicationActivated || BBSMPSProcs==1){
 			checkSequentialTerminationConditions();
@@ -927,11 +927,11 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
  					branchingRuleManager.addBranchingRule(mfbr);
 				}
 			}
-			
+
 
 		}
 		else {
-			
+
 				double startCheckpoint=MPI_Wtime();
 				bool launch=shouldWePerformCommunication( counterToLastIter,  commDone);
 				totalCommCheckTime+=(MPI_Wtime()-startCheckpoint);
@@ -941,18 +941,18 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 					commDone=true;
 					//cout<<bbIterationCounter<<" THREAD "<<mype<<" "<<BBSMPSMyPe<<" got into communication "<<endl;
 	   				double startCheckpoint2=MPI_Wtime();
-					communicate(); 
+					communicate();
 					totalCommTime+=(MPI_Wtime()-startCheckpoint2);
 				}
 				else{
 					//cout<<bbIterationCounter<<" THREAD "<<mype<<" "<<BBSMPSMyPe<<" DID NOT!!!!! got into communication "<<endl;
-				} 
-			
+				}
+
 		}
-		
+
 		counterToLastIter++;
 		PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
-		
+
 		/* If heap is empty, update status to Stopped (if possible) and break. */
 		if (inTermination) {
 			//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Heap is empty.";
@@ -976,13 +976,13 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 
 			break;
 		}
-		
+
 		if (heap.size()==0) continue;
 
 		/* Get top-most node and pop it off of heap. */
 		BBSMPSNode *currentNode_ptr=*(heap.begin());
 		//cout<<"OBTAINED A NODE WITH ESTIMATION "<<currentNode_ptr->getEstimation()<<" LB "<<currentNode_ptr->getObjective()<<endl;
-		
+
 		currentNode_ptr->setEnqueued(false);
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Copying node " << currentNode_ptr->getNodeNumber() << " off tree.";
 //BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
@@ -997,7 +997,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		//cout<<"//--------------"<<endl;
 		for (int i=0; i< serialVectorInt.size(); i++)//cout<<serialVectorInt[i]<<" ";
 			//cout<<"//--------------"<<endl;
-		for (int i=0; i< serialVectorDbl.size(); i++)//cout<<serialVectorDbl[i]<<" ";	
+		for (int i=0; i< serialVectorDbl.size(); i++)//cout<<serialVectorDbl[i]<<" ";
 			//cout<<"//--------------"<<endl;*/
 		heap.erase(heap.begin());
 
@@ -1013,13 +1013,13 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				std::set<BBSMPSNode*>::iterator it=heap.begin();
 				for (it; it!=heap.end(); it++){
 					(*it)->eliminate();
-					
+
 				}
 				heap.clear();
 				heapOrderedByLB.clear();
-				continue; 
+				continue;
 			}
-			
+
 		}
 
 		vector<int> nodeCuttingPlaneUids;
@@ -1043,10 +1043,10 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		denseBAVector lb(BBSMPSSolver::instance()->getOriginalLB());
 		denseBAVector ub(BBSMPSSolver::instance()->getOriginalUB());
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "getting branching info.";
-		
+
 		currentNode_ptr->getAllBranchingInformation(lb,ub);
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Setting bounds.";
-		
+
 		rootSolver.setLB(lb);
 		rootSolver.setUB(ub);
 
@@ -1059,7 +1059,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		rootSolver.setStates(ps);
 
 		rootSolver.commitStates();
-		
+
 		/* Solve LP defined by current node*/
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Solving LP subproblem.";
 		rootSolver.go();
@@ -1073,7 +1073,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		// hold upon return from rootSolver.
 		if (0 == mype) outputLPStatus(lpStatus);
 
-		bool isLPinfeasible = (ProvenInfeasible == lpStatus); 
+		bool isLPinfeasible = (ProvenInfeasible == lpStatus);
 		//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "isLPinfeasible = " << isLPinfeasible;
 		bool isLPunbounded = (ProvenUnbounded == lpStatus);
 		//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "isLPunbounded = " << isLPunbounded ;
@@ -1090,8 +1090,8 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Fathoming node " << currentNode_ptr->getNodeNumber() << " by infeasibility.";
 			currentNode_ptr->eliminate();
 			nodesFathomed++;
-	
-			
+
+
 			continue;
 		}
 
@@ -1102,7 +1102,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				<< " is unbounded.\n"
 			<< "Please add additional constraints to "
 			<< "bound the MILP.";
-			
+
 			return;
 		}
 
@@ -1110,7 +1110,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		assert (isLPoptimal); // Error if not optimal.
 
 		denseBAVector primalSoln(rootSolver.getPrimalSolution());
-		
+
 		bool newCuttingPlanes=cuttingPlanesManager.generateCuttingPlanes(currentNode_ptr,primalSoln);
 
 		if(newCuttingPlanes){
@@ -1120,7 +1120,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		primalSoln=denseBAVector(rootSolver.getPrimalSolution());
 		isLPoptimal = (Optimal == lpStatus);
 		ps=BAFlagVector<variableState>(BBSMPSSolver::instance()->getOriginalWarmStart());
-		currentNode_ptr->reconstructWarmStartState(ps);	
+		currentNode_ptr->reconstructWarmStartState(ps);
 		// TODO: Combine the integrality and branching steps later
 
 		/* If LP solution is optimal, can fathom by value dominance. */
@@ -1166,21 +1166,21 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 
 				currentNode_ptr->eliminate();
 				nodesFathomed++;
-				
+
 				continue;
 			}
-				
-			
-			
+
+
+
 		}
 		if (rootSolver.getObjective()>-260.4)uselessNodes++;
 		/* Get primal solution */
 		//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(summary) << "Getting primal solution...";
-		
+
 		denseBAVector originalSpaceSolution;
-		originalSpaceSolution.allocate(BBSMPSSolver::instance()->getOriginalBADimensionsSlacks(), BBSMPSSolver::instance()->getBAContext(), PrimalVector); 
+		originalSpaceSolution.allocate(BBSMPSSolver::instance()->getOriginalBADimensionsSlacks(), BBSMPSSolver::instance()->getBAContext(), PrimalVector);
 		originalSpaceSolution.copyAndShrinkToDims(primalSoln);
-		
+
 		/* If primal solution is integral: */
 		//  - Update solver status to PrimalFeasible
 		//  - Check if upper bound improved
@@ -1204,10 +1204,10 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				BBSMPSSolver::instance()->addSolutionToPool(aux);
 			}
 			currentNode_ptr->eliminate();
-			
+
 
 			nodesBecameInteger++;
-			
+
 		}
 		else{
 			double lpObj = rootSolver.getObjective();
@@ -1215,7 +1215,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
 			BAFlagVector<variableState> states(dimsSlacks, ctx, PrimalVector);
 			rootSolver.getStates(states);
-	       
+
 			vector<BBSMPSNode*> children;
 
 			branchingRuleManager.branch(currentNode_ptr,children,originalSpaceSolution);
@@ -1234,7 +1234,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			//removeCuts();
 			if (!inRampDownMode && !communicationPending){
 				heuristicsManager.runLPHeuristics(currentNode_ptr,primalSoln);
-		
+
 
 				if(heuristicsManager.willMIPHeuristicsRun(currentNode_ptr,originalSpaceSolution)){
 					removeCuts();
@@ -1243,12 +1243,12 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				}
 			}
 		}
- 
+
 		/* Optimality gap termination criteria: if gap between best
 		upper bound and best lower bound on objective function is
 		less than the optimality gap, stop the solver and return the
 		feasible solution corresponding to the best upper bound. */
-		
+
 		double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 		/*if (gap <= optGapTol) {
 			assert(objLB <= objUB); // this statement could be tripped by numerical error
@@ -1256,7 +1256,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Optimality gap reached! Terminating.";
 			break;
 		}*/
-		
+
 
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
@@ -1275,7 +1275,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 //if (0 == mype) BBSMPS_ALG_LOG_SEV(summary) << "Objective function LB = " << objLB ;
 	if (verbosityActivated) {
 
-		
+
 		BAContext BBSMPSContext=BBSMPSSolver::instance()->getSBBContext();
 		int BBSMPSProcs=BBSMPSContext.nprocs();
 		double generalBestUB;
@@ -1286,7 +1286,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		double totalInitTime;
 		double totalInitCommTime;
 		int totalUselessNodes=0;
-		
+
 		MPI_Allreduce(&uselessNodes,&totalUselessNodes, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm());
 		MPI_Allreduce(&objUB,&generalBestUB, 1, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm());
 		MPI_Allreduce(&objLB,&generalBestLB, 1, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm());
@@ -1304,21 +1304,21 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			BBSMPS_ALG_LOG_SEV(warning)<<"Avg. Initialization Time:"<<totalInitTime/BBSMPSProcs<<":Avg. Initialization Communication Time:"<<totalInitCommTime/BBSMPSProcs;
 		BBSMPS_APP_LOG_SEV(warning)<<boost::format("Branch and Bound took %f seconds") % t;
 		}
-		
+
 		double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
-  		
+
   		for (int i=0;i< BBSMPSProcs; i++){
   			MPI_Barrier(BBSMPSContext.comm());
 
   			if (BBSMPSMyPe==i&&0 == mype){
-  				
+
   				BBSMPS_ALG_LOG_SEV(warning)<<"---------------------SOLVER "<<BBSMPSMyPe<<"---------------------";
 				BBSMPS_ALG_LOG_SEV(warning)<<"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size();
 				BBSMPS_ALG_LOG_SEV(warning)<<"Nodes Fathomed:"<<nodesFathomed<<":Nodes with integer Solution:"<<nodesBecameInteger;
 				BBSMPS_ALG_LOG_SEV(warning)<<"LP Relaxation Value:"<<LPRelaxationValue<<":LP Relaxation Time:"<<LPRelaxationTime<<":Preprocessing Time:"<<PreProcessingTime<<":Total Time:"<<BBSMPSSolver::instance()->getWallTime();
 				BBSMPS_ALG_LOG_SEV(warning)<<"Number of Communication calls:"<<totalTimesCommCalled<<":Communication Time:"<<totalCommTime<<":Communication Idle Time:"<<totalIdleTime<<":Check Time:"<<totalCommCheckTime;
 				BBSMPS_ALG_LOG_SEV(warning)<<"Parallel Strong Branch Init Time:"<<initializationTime<<":Parallel Strong Branching Comm. Time:"<<initializationParallelBranchingCommTime;
-				
+
 
 				BBSMPS_ALG_LOG_SEV(warning)<<"----------------------------------------------------";
 				heuristicsManager.printStatistics();
@@ -1332,11 +1332,11 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
   			sleep(1);
 		}
 		MPI_Barrier(BBSMPSContext.comm());
-		
+
 	}
 
-	
-	
+
+
 }
 
 
@@ -1351,8 +1351,8 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
 
 
   void BBSMPSTree::loadSimpleHeuristics(){
-  	
- 	
+
+
 	/*BBSMPSHeuristicRounding *hr= new BBSMPSHeuristicRounding(0,1,"SimpleRounding");
    heuristicsManager.addLPHeuristic(hr);
 
@@ -1371,10 +1371,14 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
 
     BBSMPSHeuristicFixAndDiveLocks *hr5= new BBSMPSHeuristicFixAndDiveLocks(0,25,"FixAndDiveLocks");
 
-   heuristicsManager.addLPHeuristic(hr5);  
+   heuristicsManager.addLPHeuristic(hr5);
+
+   BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,50,"ScenDecom",200, 100, false);
+   heuristicsManager.addLPHeuristic(hr7);
+
    //BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,15,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
 
-   //heuristicsManager.addLPHeuristic(hr8);  
+   //heuristicsManager.addLPHeuristic(hr8);
     //   BBSMPSHeuristicFixAndDiveScenarioPriority *hr7= new BBSMPSHeuristicFixAndDiveScenarioPriority(0,2,"BBSMPSHeuristicFixAndDiveScenarioPriority");
 	//heuristicsManager.addLPHeuristic(hr7);
   }
@@ -1393,16 +1397,13 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
 
      BBSMPSHeuristicSolutionRINS *hr4= new BBSMPSHeuristicSolutionRINS(0,1,"SolRINS",1);
    	heuristicsManager.addMIPHeuristic(hr4);
- 
- 
+
+
 	 BBSMPSHeuristicBestRINSJump *hr5= new BBSMPSHeuristicBestRINSJump(0,1,"BestRinsJump",1);
   	heuristicsManager.addMIPHeuristic(hr5);
     BBSMPSHeuristicSolutionPolishing *hr6= new BBSMPSHeuristicSolutionPolishing(0,1,"BBSMPSHeuristicSolutionPolishing",1);
   	heuristicsManager.addMIPHeuristic(hr6);*/
 
-  	BBSMPSHeuristicScenDecom *hr4= new BBSMPSHeuristicScenDecom(0,50,"ScenDecom",200, 100, false);
-  	heuristicsManager.addMIPHeuristic(hr4);
-  	
   }
 
 
@@ -1448,7 +1449,7 @@ int BBSMPSTree::communicate(){
 	double UbToSend;
 	if (BBSMPSSolver::instance()->getSolPoolSize()==0)UbToSend=COIN_DBL_MAX;
    	else UbToSend=BBSMPSSolver::instance()->getSoln(0).getObjValue();
-	
+
 	MPI_Allgather(&UbToSend,1,MPI_DOUBLE, &allUBsGathered[0],1,MPI_DOUBLE,BBSMPSContext.comm());
 	double bestUb=allUBsGathered[0];
 	int bestUbProc=0;
@@ -1479,7 +1480,7 @@ int BBSMPSTree::communicate(){
 				MPI_Bcast(&totalSizeOfBestSol,1,MPI_DOUBLE,bestUbProc,BBSMPSContext.comm());
 				vector<double> vectorToSend(totalSizeOfBestSol);
 		//		//cout<<"PROCESSOR "<<BBSMPSMyPe<<" is about to receive solution!! The size is "<<totalSizeOfBestSol;
-				
+
 				MPI_Bcast(&vectorToSend[0],totalSizeOfBestSol,MPI_DOUBLE,bestUbProc,BBSMPSContext.comm());
 		//		//cout<<" SENDING VECTORS "<<vectorToSend[0]<<" "<<vectorToSend[1]<<" "<<vectorToSend[2]<<" "<<vectorToSend[3]<<endl;
 				BBSMPSSolution sol;
@@ -1495,11 +1496,11 @@ int BBSMPSTree::communicate(){
 		MPI_Allreduce(MPI_IN_PLACE,&totalSumOfNodes, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm());
 		if (totalSumOfNodes<BBSMPSProcs)return 0;
 	}
-	
+
 	vector<double> allLBsGathered(BBSMPSProcs);
 	double LBToSend=objLB;
 	if (heap.size()==0)LBToSend=COIN_DBL_MAX;
-   
+
 	MPI_Allgather(&LBToSend,1,MPI_DOUBLE, &allLBsGathered[0],1,MPI_DOUBLE,BBSMPSContext.comm());
 	totalIdleTime+=(MPI_Wtime()-startCheckpoint);
 	double iterationIdleTime=(MPI_Wtime()-startCheckpoint);
@@ -1564,7 +1565,7 @@ int BBSMPSTree::communicate(){
 	}
 	double chh=(MPI_Wtime()-chhhh);/*
 	//sort vector of pairs
-	
+
 	sort(globalBoundVector.begin(), globalBoundVector.end(),boundVectorComparator);
 	double chh=(MPI_Wtime()-chhhh);*/
 
@@ -1622,7 +1623,7 @@ int BBSMPSTree::communicate(){
 	double comm=MPI_Wtime();
 	MPI_Allgatherv(&nodeIntSizes[0],nodesOwned[BBSMPSMyPe],MPI_INT,&globalNodeIntSizes[0],&nodesOwned[0],&nodesOwnedDisplacement[0],MPI_INT,BBSMPSContext.comm());
 	MPI_Allgatherv(&nodeDoubleSizes[0],nodesOwned[BBSMPSMyPe],MPI_INT,&globalNodeDoubleSizes[0],&nodesOwned[0],&nodesOwnedDisplacement[0],MPI_INT,BBSMPSContext.comm());
-	
+
 	check3=(MPI_Wtime()-check3);
 	double check4=(MPI_Wtime());
 	 comm=MPI_Wtime()-comm;
@@ -1638,7 +1639,7 @@ int BBSMPSTree::communicate(){
 	for (int i=0; i< totalNodesToExchange; i++){
 		greatIntBufferSize+=globalNodeIntSizes[i];
 		greatDblBufferSize+=globalNodeDoubleSizes[i];
-	} 
+	}
 
 	//Allocate great buffer
 	vector<int> greatIntBuffer(greatIntBufferSize,0);
@@ -1646,7 +1647,7 @@ int BBSMPSTree::communicate(){
 
 	//Serialize the nodes that belong to me, delete them from the tree
 
-	
+
 	vector<int> intRecvCounts (BBSMPSProcs,0);
 	vector<int> dblRecvCounts (BBSMPSProcs,0);
 
@@ -1664,7 +1665,7 @@ int BBSMPSTree::communicate(){
 		if(globalBoundVector[nod].second.first==BBSMPSMyPe && globalBoundVector[nod].first<COIN_DBL_MAX){
 
 			it=heap.begin();
-			
+
 		//	(*it)->printNode();
 			int rankWithinOwner=globalBoundVector[nod].second.second;
 			int intPtr=AcumulatedGlobalNodeIntSizes[nodesOwnedDisplacement[BBSMPSMyPe]+rankWithinOwner];
@@ -1676,11 +1677,11 @@ int BBSMPSTree::communicate(){
 			(*it)->eliminate();
 			heap.erase(heap.begin());
 		//	//cout<<" and it now is "<<heap.size()<<endl;
-			
+
 		}
 	//	//cout<<BBSMPSMyPe<<" "<<mype<<" "<<nod<<" summing "<<globalNodeIntSizes[nod]<<" "<<globalNodeDoubleSizes[nod]<<endl;
-		
-		
+
+
 
 	}
 	for (int proc=0; proc<BBSMPSProcs; proc++){
@@ -1691,7 +1692,7 @@ int BBSMPSTree::communicate(){
 	}
 	check4=(MPI_Wtime()-check4);
 	double check5=(MPI_Wtime());
-	
+
 	vector<int> intDspls (BBSMPSProcs,0);
 	vector<int> dblDspls (BBSMPSProcs,0);
 
@@ -1723,10 +1724,10 @@ int BBSMPSTree::communicate(){
 		//cout<<"dbl dsps  counts "<<endl;
 		for(int i=0; i<dblDspls.size();i++){
 			//cout<<dblDspls[i]<<" ";
-			
+
 		}
 	}*/
- 
+
 	////cout<<" great buffer sizes "<<greatIntBuffer.size()<<" "<<greatDblBuffer.size()<<" "<<endl;
 	//Allgatherv to the great buffer
 	double comm1=MPI_Wtime();
@@ -1744,11 +1745,11 @@ int BBSMPSTree::communicate(){
 		//cout<<"THE GREAT VECTOR DBL PART"<<endl;
 		for(int i=0; i<greatDblBuffer.size();i++){
 			//cout<<greatDblBuffer[i]<<" ";
-			
+
 		}
 	}*/
 
-		
+
 
 	//	//cout<<" proc "<<mype<<" "<<BBSMPSMyPe<<" got here!!!!!!!!!!"<<endl;
 	//For every node that I own, add to the tree.
@@ -1767,8 +1768,8 @@ int BBSMPSTree::communicate(){
 				int dblPtr=AcumulatedGlobalNodeDoubleSizes[nodesOwnedDisplacement[procOwner]+rankWithinOwner];
 		//		//cout<<" proc "<<mype<<" "<<BBSMPSMyPe<<" init a node from "<<intPtr<<" "<<dblPtr<<" INDEX TRYING TO ACCESS "<<nodesOwnedDisplacement[procOwner]+rankWithinOwner<<endl;
 			//	//cout<<"UNPACKING!!"<<intPtr<<" "<<dblPtr<<"!!";
-				BBSMPSNode *node = new BBSMPSNode(&greatIntBuffer[intPtr],&greatDblBuffer[dblPtr]);	
-				
+				BBSMPSNode *node = new BBSMPSNode(&greatIntBuffer[intPtr],&greatDblBuffer[dblPtr]);
+
 				////cout<<" got the obj of th enide LP to value "<<node->getObjective()<<" the node at the top is node "<<node->getNodeNumber()<<endl;
 		//		(node)->printNode();
 				node->setEnqueued(true);
@@ -1781,12 +1782,12 @@ int BBSMPSTree::communicate(){
 
 	if (heap.size()>0){
 		////cout<<" the size of the heap is "<<heap.size()<<endl;
-		
+
 		//Update LB/UB if necessary
 		objLB=getCurrentLB();
 	}
 
-	
+
 	////cout<<" set the obj LP to value "<<objLB<<" the node at the top is node "<<currentNode_ptr->getNodeNumber()<<endl;
 	check6=(MPI_Wtime()-check6);
 	////cout<<"TIMES ch1:"<<iterationIdleTime<<":1:"<<check1<<":2:"<<check2<<":3:"<<check3<<":4:"<<check4<<":5:"<<check5<<":6:"<<check6<<" "<<comm<<" "<<comm1<<":Sort:"<<chh<<endl;
@@ -1812,7 +1813,7 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 		}
 		int flag=0;
 		int flagAux=0;
-		
+
 		MPI_Test(request0,&flagAux,&status);
 		flag+=flagAux;
 		MPI_Test(request1,&flagAux,&status);
@@ -1833,8 +1834,8 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 			}
 		}
 		if (flag==2){
-	
-			communicationPending=false;   
+
+			communicationPending=false;
 			bufferedUB=bufferedV1[0];
 			bufferedItCounter=bufferedV2[0];
 			bufferedWorstLB=-bufferedV1[1];
@@ -1899,15 +1900,15 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 		return false;
 	}
 	//cout<<"Thread initiates"<<endl;
-		
-	
+
+
 	bufferedV1[0]=objUB;
 	bufferedV1[1]=-objLB;
 	bufferedV1[2]=objLB;
 	bufferedV1[3]=heap.size();
 	bufferedV2[0]=bbIterationCounter;
 	bufferedV2[1]=heap.size();
-   
+
    	MPI_Iallreduce(MPI_IN_PLACE,&bufferedV1[0], 4, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm(),request0);
     MPI_Iallreduce(MPI_IN_PLACE,&bufferedV2[0], 2, MPI_INT,MPI_SUM,BBSMPSContext.comm(),request1);
 	communicationPending=true;

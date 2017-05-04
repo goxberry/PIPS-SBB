@@ -596,7 +596,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // index
   unsigned bestsol = smallest - ssObjvalues.begin();
-  if (0 == mype) BBSMPS_ALG_LOG_SEV(debug) << "Best solution is solution: "
+  BBSMPS_ALG_LOG_SEV(debug) << "Best solution is solution: "
 					   << bestsol << " with value: "
 					   << ssObjvalues[bestsol];
 
@@ -607,7 +607,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // and sssolutions from all ranks.
   // do not need mpi call since populating a denseBAvector
 
-  if (0 == mype) BBSMPS_ALG_LOG_SEV(debug) << "Populating first stage solution";
+  BBSMPS_ALG_LOG_SEV(debug) << "Populating first stage solution";
 
   // allocating memory for primal solution
   ubPrimalSolution.allocate(dimsOriginalSlacks, ctx, PrimalVector);
@@ -623,9 +623,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   ubPrimalSolution.getFirstStageVec().copyToPosition(&firstslacks[0],nvar1,ncon1);
 
   // print
-  //  ubPrimalSolution.getFirstStageVec().print();
+  // ubPrimalSolution.getFirstStageVec().print();
 
-  if (0 == mype) BBSMPS_ALG_LOG_SEV(debug) << "Populating second stage solution";
+  BBSMPS_ALG_LOG_SEV(debug) << "Populating second stage solution";
 
   // second stage
   for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
@@ -648,7 +648,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     ubPrimalSolution.getSecondStageVec(scen).copyToPosition(&secondslacks[0],
 							    nvar2,ncon2);
 
-    //    ubPrimalSolution.getSecondStageVec(scen).print();
+    // ubPrimalSolution.getSecondStageVec(scen).print();
 
   }
 
@@ -681,6 +681,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 }
 
 bool BBSMPSHeuristicScenDecom::shouldItRun(BBSMPSNode* node, denseBAVector &nodeSolution){
+
+  BBSMPS_ALG_LOG_SEV(debug)
+    << "Should the scenario decomposition heuristic run?";
 
   // Run if periodicity says okay.
   return true;
