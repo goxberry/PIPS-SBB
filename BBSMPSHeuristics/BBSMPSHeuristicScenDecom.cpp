@@ -254,7 +254,11 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // about it.
   scen_wrap.clear();
 
-  // useful to access CbcModel directly
+  // TODO: Resize vector to the size it will have
+
+  // TODO: Can I use existing solution pool to provide incumbents to CBC?
+
+  // Useful to access CbcModel directly
   CbcModel *cbcModel;
 
   for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
@@ -311,8 +315,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 					   << local_scen_num << " "
 					   << localScen[local_scen_num];
 
-  // Why only running at root node?
-
   // get pointer to underlying model, easier to query
   cbcModel = scen_wrap[local_scen_num-1].getModelPtr();
   cbcModel->setLogLevel(0);
@@ -338,17 +340,18 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   */
 
   // MPI allreduce call to check if anybody failed.
-  MPI_Allreduce(MPI_IN_PLACE, &found_sol, nproc,
+  MPI_Allreduce(MPI_IN_PLACE, &found_sol, 1,
 		MPI_INT, MPI_MIN,
 		ctx.comm());
+
+  // TODO: Continue as long as someone has a solution
+  // TODO: Be able to continue with fewer/more solutions than ranks
+  // TODO: Maybe only solve some of them by guessing which one is best
 
   // Abort if some rank found no solution
   if (!found_sol) return success;
 
-  // TODO: Be able to continue with fewer/more solutions than ranks
-
-  // put first stage part of solVec in mype position in fsSolutions vector.
-  memcpy(&fsSolutions[mype*nvar1], &solVec[0], nvar1 * sizeof(double));
+  // TODO: Solutions may not be unique
 
   // Joint first stage solution vector pre all gather
   /*
@@ -358,7 +361,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   */
 
   // MPI call to share all first stage solutions.
-  MPI_Allgather(&fsSolutions[mype*nvar1], nvar1, MPI_DOUBLE,
+  MPI_Allgather(&solVec[0], nvar1, MPI_DOUBLE,
 		&fsSolutions[0], nvar1, MPI_DOUBLE,
 		ctx.comm());
 
@@ -405,7 +408,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // for each local scenario
   for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
 
-    // abort if some rank found to neasible solution
+    // abort if some rank found no feasible solution
     if (!found_sol) break;
     int scen = localScen[localscen];
     int nvar2 = input.nSecondStageVars(scen);
@@ -531,9 +534,11 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   }
 
   // MPI allreduce call to check if anybody failed.
-  MPI_Allreduce(MPI_IN_PLACE, &found_sol, nproc,
+  MPI_Allreduce(MPI_IN_PLACE, &found_sol, 1,
 		MPI_INT, MPI_MIN,
 		ctx.comm());
+
+  // TODO: Don't need to abort, can just discard solution
 
   // Abort if some rank found no solution
   if (!found_sol) return success;

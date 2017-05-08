@@ -958,14 +958,6 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			//if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Heap is empty.";
 			status.setStatusToStopped();
 
-		/* If solver status is primal feasible, and the heap is empty, then
-		the solution must be optimal. */
-			if (status.isPrimalFeasible()) {
-				status.setStatusToOptimal();
-				objLB=objUB;
-				if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Optimal solution found.";
-			}
-
 		/* If solver status is not primal feasible, then the MILP must be
 		infeasible. */
 		// TODO: Add test for unboundedness.
@@ -1261,7 +1253,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
 		bbIterationCounter++;
-		if (0 == mype && verbosityActivated && bbIterationCounter%1000==0) {
+		if (0 == mype && verbosityActivated && bbIterationCounter%10==0) {
 			double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
 			BBSMPS_ALG_LOG_SEV(warning)<<"\n----------------------------------------------------\n"<<
 			"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
@@ -1371,10 +1363,10 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
 
     BBSMPSHeuristicFixAndDiveLocks *hr5= new BBSMPSHeuristicFixAndDiveLocks(0,25,"FixAndDiveLocks");
 
-   heuristicsManager.addLPHeuristic(hr5);
+    heuristicsManager.addLPHeuristic(hr5);
 
-   BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,50,"ScenDecom",200, 100, false);
-   heuristicsManager.addLPHeuristic(hr7);
+    //   BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,50,"ScenDecom",200, 100, false);
+    //   heuristicsManager.addLPHeuristic(hr7);
 
    //BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,15,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
 
