@@ -128,8 +128,7 @@ CoinPackedMatrix* concatOneScenMat(int scen, stochasticInput& input)
 }
 
 void makeOneScenOsiSolverInterface(int scen, stochasticInput& input,
-				   OsiSolverInterface *si,
-				   denseBAVector& lb, denseBAVector& ub) {
+				   OsiSolverInterface *si) {
 
   // OsiClpSolverInterface takes ownership of these
   CoinPackedMatrix *constraints = concatOneScenMat(scen, input);
@@ -147,39 +146,6 @@ void makeOneScenOsiSolverInterface(int scen, stochasticInput& input,
 
   int nvar1 = input.nFirstStageVars();
   int nvar2 = input.nSecondStageVars(scen);
-
-  // modify bounds based on node bounds
-
-  // Print original lb
-  /*
-  if (scen==0) {
-    cout << "Original lb" << endl;
-    copy(collb, collb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-    cout << endl;
-  }
-  */
-  //  lb.getFirstStageVec().print();
-
-  // first lb
-  // first stage
-  memcpy(&collb[0], &lb.getFirstStageVec()[0], nvar1 * sizeof(double));
-  // second stage
-  memcpy(&collb[nvar1], &lb.getSecondStageVec(scen)[0], nvar2 * sizeof(double));
-
-  // Print original lb
-  /*
-  if (scen==0) {
-    cout << "lb after modifying" << endl;
-    copy(collb, collb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-    cout << endl;
-  }
-  */
-
-  // then ub
-  // first stage
-  memcpy(&colub[0], &ub.getFirstStageVec()[0], nvar1 * sizeof(double));
-  // second stage
-  memcpy(&colub[nvar1], &ub.getSecondStageVec(scen)[0], nvar2 * sizeof(double));
 
   si->assignProblem(constraints, collb, colub, obj, rowlb, rowub);
 
@@ -220,7 +186,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   int nproc = ctx.nprocs();
   int mype=BBSMPSSolver::instance()->getMype();
 
-  BBSMPS_ALG_LOG_SEV(debug) << "Problem size: " << nvar1 << " " << ncon1 << " " << nscen;
+  BBSMPS_ALG_LOG_SEV(warning) << "Problem size: " << nvar1 << " " << ncon1 << " " << nscen;
 
   BBSMPS_ALG_LOG_SEV(debug) << "MPI info: " << nproc << " " << mype;
   if (0 == mype) {
@@ -249,10 +215,12 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // Build single scenario object for objects.
 
-  // clean up old objects.
-  // TODO: Reuse and just change the bounds, but need to be careful
-  // about it.
-  scen_wrap.clear();
+  // To reuse scen_wrap, we need to
+  // 1. Not clear scen_wrap. Done.
+  // 2. Initialize scen_wrap only once, using additional indicator for first time. Done.
+  // 3. Do not update node variable bounds in initialization. Done.
+  // 4. Refactor bound update code. Not to be refactored, since only used in one place.
+  // 5. Update scen_wrap using new bound update code every time. Done.
 
   // TODO: Resize vector to the size it will have
 
@@ -261,31 +229,84 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // Useful to access CbcModel directly
   CbcModel *cbcModel;
 
+  // First time entering the heuristic
+  if (firstTime) {
+
+    for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
+
+      int scen = localScen[localscen];
+
+      // uses the default constructor
+      OsiCbcSolverInterface wrap(NULL,NULL);
+
+      // should I be using calls from rootSolver instead. Yes, if there is presolve.
+      // To be revisited.
+      // Similarly OSi problem wrapper could be given the presolved problem.
+      // many dimensions could break if there is presolve.
+      // will have to stop using input.
+
+      makeOneScenOsiSolverInterface(scen, input, &wrap);
+
+      // Add node and time limits
+      wrap.setMaximumNodes(nodeLim);
+      wrap.setMaximumSeconds(timeLim);
+
+      // Add to queue.
+      scen_wrap.push_back(wrap);
+
+    }
+
+  }
+
+  // can set firstTime = false. scen_wrap is now initialized.
+  firstTime = false;
+
   for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
 
     int scen = localScen[localscen];
 
-    // uses the default constructor
-    OsiCbcSolverInterface wrap(NULL,NULL);
+    int nvar2 = input.nSecondStageVars(scen);
+    int ncon2 = input.nSecondStageCons(scen);
 
-    // should I be using calls from rootSolver instead. Yes, if there is presolve.
-    // To be revisited.
-    // Similarly OSi problem wrapper could be given the presolved problem.
-    // many dimensions could break if there is presolve.
-    // will have to stop using input.
+    if (localscen==1) {
+      BBSMPS_ALG_LOG_SEV(warning) << "Problem size: " << nvar2 << " " << ncon2 << " " << scen;
+    }
 
-    makeOneScenOsiSolverInterface(scen, input, &wrap, lb, ub);
+    // modify bounds based on node bounds
 
-    // Important Note: Cannot use getColUpper of OsiCbcSolverInterface since it uses
-    // getColUpper of OsiSolverInterface, which is not implemented in the base class
-    // passing bounds directly to makeOneScenOsiSolverInterface
+    // Print original lb
+    if (localscen==1) {
 
-    // Add node and time limits
-    wrap.setMaximumNodes(nodeLim);
-    wrap.setMaximumSeconds(timeLim);
+      const double *testlb = scen_wrap[localscen-1].getColLower();
+      cout << "Printing previous lower bound" << endl;
+      copy(testlb, testlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
+      cout << endl;
 
-    // Add to queue.
-    scen_wrap.push_back(wrap);
+      cout << "Printing node lb, including slacks" << endl;
+      lb.getFirstStageVec().print();
+      lb.getSecondStageVec(scen).print();
+
+    }
+
+    // first stage
+    for (unsigned col = 0; col < nvar1; col++) {
+      scen_wrap[localscen-1].setColLower(col,lb.getFirstStageVec()[col]);
+      scen_wrap[localscen-1].setColUpper(col,ub.getFirstStageVec()[col]);
+    }
+
+    // second stage
+    for (unsigned col = 0; col < nvar2; col++) {
+      scen_wrap[localscen-1].setColLower(nvar1+col,lb.getSecondStageVec(scen)[col]);
+      scen_wrap[localscen-1].setColUpper(nvar1+col,ub.getSecondStageVec(scen)[col]);
+    }
+
+    // Print modified lb
+    if (localscen==1) {
+      const double *modlb = scen_wrap[localscen-1].getColLower();
+      cout << "lb after modifying" << endl;
+      copy(modlb, modlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
+      cout << endl;
+    }
 
     // Important note: Need to offset scen_wrap by -1 since localscen starts at 1
 

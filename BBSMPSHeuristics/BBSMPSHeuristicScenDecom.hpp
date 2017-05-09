@@ -63,6 +63,7 @@ public:
   BBSMPSHeuristicScenDecom(int offset, int depth, const char *_name,
 			   int _nodeLim, double _timeLim, bool _sameScen):
     nodeLim(_nodeLim), timeLim(_timeLim), sameScen(_sameScen),
+    firstTime(true),
     local_scen_num(1),
     BBSMPSHeuristic(offset,depth,_name){};
   bool runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution);
@@ -73,6 +74,8 @@ private:
   int    nodeLim;  // nodes to run B&B on single scen problems
   double timeLim; // timelimit on single scen problem
   bool   sameScen;  // solve all scenarios in rank? Currently not used.
+
+  bool   firstTime; // indicator for first call
 
   int    local_scen_num;  // which local scenario to consider
 
