@@ -1365,8 +1365,8 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
 
     heuristicsManager.addLPHeuristic(hr5);
 
-    //   BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,50,"ScenDecom",200, 100, false);
-    //   heuristicsManager.addLPHeuristic(hr7);
+    BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,25,"ScenDecom",200, 100, false);
+    heuristicsManager.addLPHeuristic(hr7);
 
    //BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,15,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
 

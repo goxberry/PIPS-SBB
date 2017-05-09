@@ -319,6 +319,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   cbcModel = scen_wrap[local_scen_num-1].getModelPtr();
   cbcModel->setLogLevel(0);
 
+  // Just to be safe, resetting model solve
+  cbcModel->resetModel();
+
   // Solving directly with Cbc
   cbcModel->branchAndBound();
 
@@ -431,6 +434,17 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     for(unsigned soln = 0; soln < nproc; soln++) {
 
       BBSMPS_ALG_LOG_SEV(debug) << "Considering solution: " << soln;
+      /*
+      cout << "First stage solution being fixed" << endl;
+      copy(fsSolutions.begin(), fsSolutions.end(), ostream_iterator<double>(cout, " "));
+      cout << endl;
+      */
+      // get pointer to underlying model, easier to query
+      cbcModel = scen_wrap[localscen-1].getModelPtr();
+      cbcModel->setLogLevel(0);
+
+      // Just to be safe, resetting model solve
+      cbcModel->resetModel();
 
       // fix first stage variables
       // maybe fix only integer variables?
@@ -439,11 +453,13 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 	scen_wrap[localscen-1].setColUpper(col,fsSolutions[soln*nvar1+col]);
       }
 
-      // get pointer to underlying model, easier to query
-      cbcModel = scen_wrap[localscen-1].getModelPtr();
-      cbcModel->setLogLevel(0);
-
-      // Do we need to reset solves?
+      // sanity check to print lb
+      /*
+      const double *lb = scen_wrap[localscen-1].getColLower();
+      cout << "Printing set lower bound" << endl;
+      copy(lb, lb+nvar1, ostream_iterator<double>(cout, " "));
+      cout << endl;
+      */
 
       // Solving directly with Cbc
       cbcModel->branchAndBound();
@@ -503,7 +519,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 					  fsObjvalues[soln]);
       }
 
-      // Second stage objective value vector
+      // First stage objective value vector
       /*
       cout << "First stage objective values after scenario/soln " << localscen
 	   << " " << soln << endl;
