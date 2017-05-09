@@ -74,10 +74,10 @@ private:
   int    nodeLim;  // nodes to run B&B on single scen problems
   double timeLim; // timelimit on single scen problem
   bool   sameScen;  // solve all scenarios in rank? Currently not used.
-
   bool   firstTime; // indicator for first call
-
   int    local_scen_num;  // which local scenario to consider
+
+  bool   fsBinary; // indicator for whether first stage is binary
 
   std::vector<OsiCbcSolverInterface> scen_wrap;
   // first stage solutions for each rank
@@ -91,6 +91,8 @@ private:
   std::vector<double> fsObjvalues;
   // primal solution vector to hold best solution
   denseBAVector ubPrimalSolution;
+  // vector of first stage solutions for which cuts are added
+  std::set<std::vector<bool> > fsCuts;
 
 };
 

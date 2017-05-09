@@ -127,6 +127,26 @@ CoinPackedMatrix* concatOneScenMat(int scen, stochasticInput& input)
   return constr;
 }
 
+bool checkFSBinary(stochasticInput& input)
+{
+
+  int nvar1 = input.nFirstStageVars();
+  const vector<double>& lb = input.getFirstStageColLB();
+  const vector<double>& ub = input.getFirstStageColUB();
+
+  for (unsigned col=0; col < nvar1; col++) {
+    if (!input.isFirstStageColInteger(col)) {
+	return false;
+    }
+    if (!isBinary(lb[col],ub[col],1e-6)) {
+      return false;
+    }
+  }
+
+  return true;
+
+}
+
 void makeOneScenOsiSolverInterface(int scen, stochasticInput& input,
 				   OsiSolverInterface *si) {
 
@@ -232,6 +252,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // First time entering the heuristic
   if (firstTime) {
 
+    fsBinary = checkFSBinary(input);
+    BBSMPS_ALG_LOG_SEV(warning) << "Problem is first stage binary: " << fsBinary;
+
     for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
 
       int scen = localScen[localscen];
@@ -268,25 +291,25 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     int nvar2 = input.nSecondStageVars(scen);
     int ncon2 = input.nSecondStageCons(scen);
 
-    if (localscen==1) {
-      BBSMPS_ALG_LOG_SEV(warning) << "Problem size: " << nvar2 << " " << ncon2 << " " << scen;
-    }
-
     // modify bounds based on node bounds
+    /*
+    if (localscen>0) {
 
-    // Print original lb
-    if (localscen==1) {
+      BBSMPS_ALG_LOG_SEV(warning) << "Problem size: " << nvar2 << " " << ncon2 << " " << localscen;
 
+      // Print original lb
       const double *testlb = scen_wrap[localscen-1].getColLower();
       cout << "Printing previous lower bound" << endl;
       copy(testlb, testlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
       cout << endl;
+      //TODO: Something is messed up here, but we reset bounds, so for now it is okay.
 
       cout << "Printing node lb, including slacks" << endl;
       lb.getFirstStageVec().print();
       lb.getSecondStageVec(scen).print();
 
     }
+    */
 
     // first stage
     for (unsigned col = 0; col < nvar1; col++) {
@@ -301,12 +324,14 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     }
 
     // Print modified lb
-    if (localscen==1) {
+    /*
+    if (localscen>0) {
       const double *modlb = scen_wrap[localscen-1].getColLower();
       cout << "lb after modifying" << endl;
       copy(modlb, modlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
       cout << endl;
     }
+    */
 
     // Important note: Need to offset scen_wrap by -1 since localscen starts at 1
 
@@ -358,9 +383,11 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // Print first stage solution vector
   /*
-  cout << "First stage solution" << endl;
-  copy(solVec, solVec+nvar1, ostream_iterator<double>(cout, " "));
-  cout << endl;
+  if (solVec != NULL) {
+    cout << "First stage solution" << endl;
+    copy(solVec, solVec+nvar1, ostream_iterator<double>(cout, " "));
+    cout << endl;
+  }
   */
 
   // MPI allreduce call to check if anybody failed.
@@ -397,6 +424,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   */
 
   // Now, all ranks have all the solutions.
+
 
   // size vector for second stage solutions, one vector for each scenario
   ssSolutions.resize(nlocalscen);
@@ -641,6 +669,53 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   BBSMPS_ALG_LOG_SEV(debug) << "Best solution is solution: "
 					   << bestsol << " with value: "
 					   << ssObjvalues[bestsol];
+
+  // if first stage is binary, I can add no-good cut
+  if (fsBinary) {
+    for(unsigned soln = 0; soln < nproc; soln++) {
+
+      // construct bool vector
+      vector<bool> fsbool(nvar1);
+      for (unsigned col = 0; col < nvar1; col++) {
+	fsbool[col] = (isOne(fsSolutions[soln*nproc+col],1e-6)) ? true : false;
+      }
+
+      // check if solution soln is unique
+      if (fsCuts.find(fsbool) == fsCuts.end()) {
+
+	// add to Cbc objects
+
+	// build row object
+	vector<double> elts(nvar1);
+	double rowlb = 1;
+	double rowub = nvar1;
+
+	for (unsigned col = 0; col < nvar1; col++) {
+
+	  if (fsbool[col]) {
+	    rowlb -= 1;
+	    rowub -= 1;
+	    elts[col] = -1.0;
+	  }
+	  else {
+	    elts[col] = 1.0;
+	  }
+
+	}
+
+	CoinPackedVector vec(nvar1, &elts[0]);
+
+	// for each local scenario
+	for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
+	  scen_wrap[localscen-1].addRow(vec, rowlb, rowub);
+	}
+
+	// insert
+	fsCuts.insert(fsbool);
+      }
+
+    }
+  }
 
   // Turns out this is not very good solution. Maybe const scenarios?
 
