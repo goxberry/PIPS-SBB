@@ -2,7 +2,7 @@ To build PIPS-SBB on Sierra:
 
 1. Clone PIPS into the PIPS subdirectory via:
 
-git clone git@git.mcs.anl.gov:PIPS.git PIPS
+git clone https://github.com/Argonne-National-Laboratory/PIPS
 
 2. Build PIPS-SBB using the following command:
 
