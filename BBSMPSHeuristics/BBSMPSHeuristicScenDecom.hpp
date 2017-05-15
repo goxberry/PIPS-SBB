@@ -60,11 +60,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 class BBSMPSHeuristicScenDecom: public BBSMPSHeuristic {
 
 public:
+  ~BBSMPSHeuristicScenDecom();
+
   BBSMPSHeuristicScenDecom(int offset, int depth, const char *_name,
 			   int _nodeLim, double _timeLim, bool _sameScen):
     nodeLim(_nodeLim), timeLim(_timeLim), sameScen(_sameScen),
     firstTime(true),
-    local_scen_num(1),
+    local_scen_num(0),
+    allSolvedOnce(false),
     BBSMPSHeuristic(offset,depth,_name){};
   bool runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution);
   bool shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution);
@@ -76,12 +79,13 @@ private:
   bool   sameScen;  // solve all scenarios in rank? Currently not used.
   bool   firstTime; // indicator for first call
   int    local_scen_num;  // which local scenario to consider
+  bool   allSolvedOnce; // indicator where all local scenarios solved once
 
   bool   fsBinary; // indicator for whether first stage is binary
+  bool   fsInteger; // indicator for whether first stage is binary
 
-  std::vector<OsiCbcSolverInterface> scen_wrap;
-  // first stage solutions for each rank
-  std::vector<double> fsSolutions;
+  std::vector<OsiCbcSolverInterface*> scen_wrap;
+
   // second stage solution for each local scenario (outer)
   // for each fs solution (inner)
   std::vector<std::vector<double> > ssSolutions;
@@ -91,8 +95,11 @@ private:
   std::vector<double> fsObjvalues;
   // primal solution vector to hold best solution
   denseBAVector ubPrimalSolution;
-  // vector of first stage solutions for which cuts are added
-  std::set<std::vector<bool> > fsCuts;
+
+  // local first stage solutuons
+  std::vector<double> localFsSolns;
+  // average first stage solution
+  std::vector<double> aveFsSoln;
 
 };
 

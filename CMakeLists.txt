@@ -165,6 +165,7 @@ add_library(pipssbb
 	BBSMPSBranching/BBSMPSParallelPseudoCostSmallestScenarioFirstBranchingRule.cpp
 	BBSMPSBranching/BBSMPSPseudoCostSmallestScenarioFirstBranchingRule.cpp
 	BBSMPSBranching/BBSMPSPseudoCostBranchingRule.cpp
+	BBSMPSBranching/BBSMPSPseudoCostBranchingRuleEstimation.cpp
 	BBSMPSBranching/BBSMPSParallelPseudoCostBranchingRule.cpp
 	BBSMPSUtils/BBSMPSUtils.cpp
 	BBSMPSUtils/BBSMPSLogging.cpp

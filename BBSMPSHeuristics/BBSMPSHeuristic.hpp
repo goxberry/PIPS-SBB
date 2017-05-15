@@ -9,7 +9,7 @@
    Additionally, it features a virtual function called "shouldItRun", which is intended
    to be a more complex boolean function to determine if the heuristic should run.
 
-*/ 
+*/
 // ----------------------------------------------------------------------------
 
 #ifndef BBSMPSHEURISTIC_H
@@ -34,7 +34,7 @@ public:
 
 
 	BBSMPSHeuristic(int offset, int depth,  const char *_name);
-	~BBSMPSHeuristic();
+        virtual ~BBSMPSHeuristic();
 	virtual bool shouldItRun(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){return true;};
 	bool checkPeriodicity(BBSMPSNode* node);
 	virtual bool runHeuristic(BBSMPSNode* node, denseBAVector &LPRelaxationSolution){std::cout<<"Well, this is an error...\n";};
@@ -53,7 +53,7 @@ public:
 
 
 private:
-		
+
 		std::string name;
 
 protected:

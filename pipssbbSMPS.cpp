@@ -65,11 +65,11 @@ int main(int argc, char **argv) {
   bb.loadSimpleHeuristics();
 
   //  bb.loadMIPHeuristics();
-  bb.setTimeLimit(30);
+  bb.setTimeLimit(300);
   //  bb.setNodeLimit(1);
   //bb.loadCuttingPlanes();
   if (0 == mype) BBSMPS_ALG_LOG_SEV(info) <<"Calling branch-and-bound.";
- // bb.runParallelSBInitialization();
+  //bb.runParallelSBInitialization();
   bb.branchAndBound();
 
 

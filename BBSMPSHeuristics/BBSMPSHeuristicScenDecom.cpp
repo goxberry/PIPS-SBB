@@ -127,23 +127,31 @@ CoinPackedMatrix* concatOneScenMat(int scen, stochasticInput& input)
   return constr;
 }
 
-bool checkFSBinary(stochasticInput& input)
+void checkFSBinary(stochasticInput& input, bool &fsInteger, bool &fsBinary)
 {
 
   int nvar1 = input.nFirstStageVars();
   const vector<double>& lb = input.getFirstStageColLB();
   const vector<double>& ub = input.getFirstStageColUB();
 
+  // initialize
+  fsInteger = true;
+  fsBinary = true;
+
   for (unsigned col=0; col < nvar1; col++) {
+    // not integer or binary
     if (!input.isFirstStageColInteger(col)) {
-	return false;
+      fsInteger = false;
+      fsBinary = false;
+      return;
     }
+    // not binary
     if (!isBinary(lb[col],ub[col],1e-6)) {
-      return false;
+      fsBinary = false;
     }
   }
 
-  return true;
+  return;
 
 }
 
@@ -181,6 +189,16 @@ void makeOneScenOsiSolverInterface(int scen, stochasticInput& input,
   si->setInteger(&integerIdx[0], integerIdx.size());
 }
 
+BBSMPSHeuristicScenDecom::~BBSMPSHeuristicScenDecom(){
+
+  BBSMPS_ALG_LOG_SEV(debug) << "Cleaning up scen_wrap vector" << endl;
+  // One less element in scen_wrap than size.
+  for (unsigned i=0; i<scen_wrap.size(); i++) {
+    delete scen_wrap[i];
+  }
+
+}
+
 bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 					    denseBAVector &nodeSolution){
 
@@ -206,11 +224,11 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   int nproc = ctx.nprocs();
   int mype=BBSMPSSolver::instance()->getMype();
 
-  BBSMPS_ALG_LOG_SEV(warning) << "Problem size: " << nvar1 << " " << ncon1 << " " << nscen;
+  BBSMPS_ALG_LOG_SEV(debug) << "Problem size: " << nvar1 << " " << ncon1 << " " << nscen;
 
   BBSMPS_ALG_LOG_SEV(debug) << "MPI info: " << nproc << " " << mype;
   if (0 == mype) {
-    BBSMPS_ALG_LOG_SEV(warning) << "Performing the ScenDecom Heuristic.";
+    BBSMPS_ALG_LOG_SEV(debug) << "Performing the ScenDecom Heuristic.";
   }
   timesCalled++;
 
@@ -242,8 +260,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // 4. Refactor bound update code. Not to be refactored, since only used in one place.
   // 5. Update scen_wrap using new bound update code every time. Done.
 
-  // TODO: Resize vector to the size it will have
-
   // TODO: Can I use existing solution pool to provide incumbents to CBC?
 
   // Useful to access CbcModel directly
@@ -252,15 +268,30 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // First time entering the heuristic
   if (firstTime) {
 
-    fsBinary = checkFSBinary(input);
-    BBSMPS_ALG_LOG_SEV(warning) << "Problem is first stage binary: " << fsBinary;
+    // Resize vector to the size it will have
+
+    BBSMPS_ALG_LOG_SEV(debug) << "Size of scen_wrap: " << nlocalscen-1;
+
+    scen_wrap.resize(nlocalscen-1);
+
+    BBSMPS_ALG_LOG_SEV(debug) << "Resized scen_wrap vector";
+
+    checkFSBinary(input, fsInteger, fsBinary);
+
+    BBSMPS_ALG_LOG_SEV(debug) << "Problem is first stage integer/binary: "
+				<< fsInteger << " " << fsBinary;
+
+    // resizes localFsSolns
+    localFsSolns.resize((nlocalscen-1)*nvar1);
+    // assigns aveFsSoln and sets to 0
+    aveFsSoln.assign(nvar1,0);
 
     for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
 
       int scen = localScen[localscen];
 
       // uses the default constructor
-      OsiCbcSolverInterface wrap(NULL,NULL);
+      OsiCbcSolverInterface *wrap = new OsiCbcSolverInterface(NULL,NULL);
 
       // should I be using calls from rootSolver instead. Yes, if there is presolve.
       // To be revisited.
@@ -268,18 +299,20 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       // many dimensions could break if there is presolve.
       // will have to stop using input.
 
-      makeOneScenOsiSolverInterface(scen, input, &wrap);
+      makeOneScenOsiSolverInterface(scen, input, wrap);
 
       // Add node and time limits
-      wrap.setMaximumNodes(nodeLim);
-      wrap.setMaximumSeconds(timeLim);
+      wrap->setMaximumNodes(nodeLim);
+      wrap->setMaximumSeconds(timeLim);
 
       // Add to queue.
-      scen_wrap.push_back(wrap);
+      scen_wrap[localscen-1]=wrap;
 
     }
 
   }
+
+  BBSMPS_ALG_LOG_SEV(debug) << "scen_wrap is now initialized";
 
   // can set firstTime = false. scen_wrap is now initialized.
   firstTime = false;
@@ -295,10 +328,10 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     /*
     if (localscen>0) {
 
-      BBSMPS_ALG_LOG_SEV(warning) << "Problem size: " << nvar2 << " " << ncon2 << " " << localscen;
+      BBSMPS_ALG_LOG_SEV(debug) << "Problem size: " << nvar2 << " " << ncon2 << " " << localscen;
 
       // Print original lb
-      const double *testlb = scen_wrap[localscen-1].getColLower();
+      const double *testlb = scen_wrap[localscen-1]->getColLower();
       cout << "Printing previous lower bound" << endl;
       copy(testlb, testlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
       cout << endl;
@@ -313,20 +346,20 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
     // first stage
     for (unsigned col = 0; col < nvar1; col++) {
-      scen_wrap[localscen-1].setColLower(col,lb.getFirstStageVec()[col]);
-      scen_wrap[localscen-1].setColUpper(col,ub.getFirstStageVec()[col]);
+      scen_wrap[localscen-1]->setColLower(col,lb.getFirstStageVec()[col]);
+      scen_wrap[localscen-1]->setColUpper(col,ub.getFirstStageVec()[col]);
     }
 
     // second stage
     for (unsigned col = 0; col < nvar2; col++) {
-      scen_wrap[localscen-1].setColLower(nvar1+col,lb.getSecondStageVec(scen)[col]);
-      scen_wrap[localscen-1].setColUpper(nvar1+col,ub.getSecondStageVec(scen)[col]);
+      scen_wrap[localscen-1]->setColLower(nvar1+col,lb.getSecondStageVec(scen)[col]);
+      scen_wrap[localscen-1]->setColUpper(nvar1+col,ub.getSecondStageVec(scen)[col]);
     }
 
     // Print modified lb
     /*
     if (localscen>0) {
-      const double *modlb = scen_wrap[localscen-1].getColLower();
+      const double *modlb = scen_wrap[localscen-1]->getColLower();
       cout << "lb after modifying" << endl;
       copy(modlb, modlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
       cout << endl;
@@ -341,68 +374,176 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // size vector of first stage solutions for allgather
   // one per rank, each of length nvar1
-  fsSolutions.resize(nproc*nvar1);
+  // first stage solutions for each rank
+  vector<double> fsSolutions(nproc*nvar1);
+  // indicator for whether solution was found
+  vector<int> foundSol(nproc);
+
+  // To modify objective
+  // Replace c_i with c_i (1 + \rho (\hat x - \bar x)). Done.
+  // We need to store \hat x for each local scenario: using localFsSolns
+  // TODO: What if it was infeasible?
+  // \bar x = old \bar x + (new \hat x - old \hat x)/nscen. Done.
+  // We keep track of \bar x in each rank, use AveFsSoln
+  // For each scenario solved del = (new \hat x - old \hat x)/nscen is calculated
+  // All ranks reduce del and get sum across ranks. Done.
+  // All ranks add reduced del to \bar x. Done.
 
   // For one scenario in rank, run CBC with settings
+
+  BBSMPS_ALG_LOG_SEV(debug) << "Pre increment Local/actual scenario: "
+					   << local_scen_num << " "
+					   << localScen[local_scen_num];
 
   // increment if no sameScen
   if (!sameScen) {
     local_scen_num++; // increment
-    if (local_scen_num == nlocalscen) local_scen_num = 1; // handle overflow
+    if (local_scen_num == nlocalscen) {
+
+      local_scen_num = 1; // handle overflow
+
+      allSolvedOnce = true; // all have been solved once
+
+    }
   }
 
   // indicator for finding feasible solution
   int found_sol = 1;
 
   // Write mps; just for debugging
-  //  scen_wrap[local_scen_num-1].writeMps("temp","mps");
+  //  scen_wrap[local_scen_num-1]->writeMps("temp","mps");
 
-  BBSMPS_ALG_LOG_SEV(debug) << "Local/actual scenario: "
+  BBSMPS_ALG_LOG_SEV(debug) << "Post increment Local/actual scenario: "
 					   << local_scen_num << " "
 					   << localScen[local_scen_num];
 
   // get pointer to underlying model, easier to query
-  cbcModel = scen_wrap[local_scen_num-1].getModelPtr();
+  cbcModel = scen_wrap[local_scen_num-1]->getModelPtr();
   cbcModel->setLogLevel(0);
+
+  // Code for modifying objective funtion.
+  // replace c_i with c_i (1 + \rho (\hat x - \bar x))
+  // test code path with \bar x = \hat x
+  //  memcpy(&aveFsSoln[0], &localFsSolns[(local_scen_num-1)*nvar1], nvar1*sizeof(double));
+  double rho = 1.0;
+  vector<double> diffobj(nvar1);
+  // get objective coefficients
+  const double *oldobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
+  // Print objective vector
+  /*
+  cout << "Old Objective vector" << endl;
+  copy(oldobjVec, oldobjVec+nvar1, ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
+  // updating delta in objective function if all have been solved once
+  for (unsigned col=0; col<nvar1; col++) {
+    diffobj[col] = (allSolvedOnce) ? oldobjVec[col] * rho *
+      (localFsSolns[(local_scen_num-1)*nvar1+col] - aveFsSoln[col]) : 0;
+  }
 
   // Just to be safe, resetting model solve
   cbcModel->resetModel();
 
+  // Modify objective with penalty
+  for (unsigned col=0; col<nvar1; col++) {
+    scen_wrap[local_scen_num-1]->setObjCoeff(col, oldobjVec[col]+diffobj[col]);
+  }
+
+  // Print objective vector
+  /*
+  const double *printobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
+  cout << "Modified Objective vector" << endl;
+  copy(printobjVec, printobjVec+nvar1, ostream_iterator<double>(cout, " "));
+  cout << endl;
+  cout << "All local First stage solution before solving" << endl;
+  copy(localFsSolns.begin(), localFsSolns.end(), ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
+
   // Solving directly with Cbc
   cbcModel->branchAndBound();
+
+  // Modify objective back
+  const double *newobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
+  for (unsigned col=0; col<nvar1; col++) {
+    scen_wrap[local_scen_num-1]->setObjCoeff(col, newobjVec[col]-diffobj[col]);
+  }
+
+  // Print objective vector
+  /*
+  const double *resetobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
+  cout << "Reset back to original Objective vector" << endl;
+  copy(resetobjVec, resetobjVec+nvar1, ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
+
+  // clear up diffobj
+  diffobj.clear();
 
   // initialize to NULL
   solVec = NULL;
   // get best solution
   solVec = cbcModel->bestSolution();
-  // abort if no solution, mark as no solution
+  vector<double> fsSolVec;
+  // abort if all no solution, mark as no solution
   if (solVec == NULL) {
-    cout << "Found no feasible solution" << endl;
+    // assign dummy entries
+    fsSolVec.assign(nvar1,0);
+    BBSMPS_ALG_LOG_SEV(debug) << "Found no feasible solution";
     found_sol = 0;
   }
+  else {
+    // assign to local FS soln vector
+    fsSolVec.assign(solVec, solVec+nvar1);
+  }
+
+  // Need to calculate new \hat x - old \hat x, else 0
+  vector<double> diffFsSol(nvar1);
+  for (unsigned col=0; col<nvar1; col++) {
+    diffFsSol[col] = (allSolvedOnce) ? (fsSolVec[col] - localFsSolns[(local_scen_num-1)*nvar1+col])/ (nscen + 0.0) : fsSolVec[col] / (nscen + 0.0);
+  }
+
+  /*
+  cout << "Diff First stage solution" << endl;
+  copy(diffFsSol.begin(), diffFsSol.end(), ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
+
+  // assigns to localFsSolns
+  memcpy(&localFsSolns[(local_scen_num-1)*nvar1], &fsSolVec[0], nvar1*sizeof(double));
 
   // Print first stage solution vector
   /*
-  if (solVec != NULL) {
-    cout << "First stage solution" << endl;
-    copy(solVec, solVec+nvar1, ostream_iterator<double>(cout, " "));
-    cout << endl;
-  }
+  cout << "All local First stage solution" << endl;
+  copy(localFsSolns.begin(), localFsSolns.end(), ostream_iterator<double>(cout, " "));
+  cout << endl;
   */
+
+  // MPI call to share which ranks found first-stage solutions
+  MPI_Allgather(&found_sol, 1, MPI_INT,
+		&foundSol[0], 1, MPI_INT,
+		ctx.comm());
 
   // MPI allreduce call to check if anybody failed.
   MPI_Allreduce(MPI_IN_PLACE, &found_sol, 1,
-		MPI_INT, MPI_MIN,
+		MPI_INT, MPI_SUM,
 		ctx.comm());
 
-  // TODO: Continue as long as someone has a solution
-  // TODO: Be able to continue with fewer/more solutions than ranks
   // TODO: Maybe only solve some of them by guessing which one is best
 
-  // Abort if some rank found no solution
-  if (!found_sol) return success;
+  // Abort if all ranks found no solution
+  BBSMPS_ALG_LOG_SEV(debug) << "Number of ranks that found a solution " << found_sol;
+  /*
+  cout << "Vector of feasible solution indicators" << endl;
+  copy(foundSol.begin(), foundSol.end(), ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
 
-  // TODO: Solutions may not be unique
+  // Continue as long as someone has a solution
+  // Be able to continue with fewer/more solutions than ranks.
+  // Done with foundSol indicators
+  // only quit if all processes found no solution
+  if (found_sol == 0) return success;
 
   // Joint first stage solution vector pre all gather
   /*
@@ -412,9 +553,77 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   */
 
   // MPI call to share all first stage solutions.
-  MPI_Allgather(&solVec[0], nvar1, MPI_DOUBLE,
+  MPI_Allgather(&fsSolVec[0], nvar1, MPI_DOUBLE,
 		&fsSolutions[0], nvar1, MPI_DOUBLE,
 		ctx.comm());
+  // Some of these may be all zeros.
+
+  // MPI call to share all delta first stage solutions.
+  // Now each rank has the sum of all the deltas
+  MPI_Allreduce(MPI_IN_PLACE, &diffFsSol[0], nvar1, MPI_DOUBLE, MPI_SUM,
+		ctx.comm());
+
+  /*
+  cout << "Diff First stage solution after reduction" << endl;
+  copy(diffFsSol.begin(), diffFsSol.end(), ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
+
+  // TODO: Change to <algorithm> calls
+  // Update average Fs soln
+  for (unsigned col=0; col<nvar1; col++) {
+    aveFsSoln[col] += diffFsSol[col];
+    // TODO: Other places where there might be a numerical issue.
+    if (isZero(aveFsSoln[col],1e-6)) aveFsSoln[col] = 0.0;
+  }
+
+  /*
+  cout << "Average First stage solution after update" << endl;
+  copy(aveFsSoln.begin(), aveFsSoln.end(), ostream_iterator<double>(cout, " "));
+  cout << endl;
+  */
+
+  diffFsSol.clear();
+
+  // Solutions may not be unique. Mark uniqueness first
+  // check uniqueness by putting in set for FS integer?
+  // FS binary is done.
+  if (fsBinary) {
+
+    set<vector<bool> > fsSet;
+
+    for(unsigned soln = 0; soln < nproc; soln++) {
+
+      // ignore if no solution found.
+      if (!foundSol[soln]) continue;
+
+      // construct bool vector
+      vector<bool> fsbool(nvar1);
+      for (unsigned col = 0; col < nvar1; col++) {
+	fsbool[col] = (isOne(fsSolutions[soln*nvar1+col],1e-6)) ? true : false;
+      }
+
+      // check if solution soln is unique
+      if (fsSet.find(fsbool) == fsSet.end()) {
+
+	// insert
+	fsSet.insert(fsbool);
+
+      }
+
+      else {
+
+	// mark as duplicate
+	BBSMPS_ALG_LOG_SEV(debug) << "Solution is duplicate: " << soln;
+
+	foundSol[soln] = 0;
+	// decrement
+	found_sol --;
+
+      }
+    }
+
+  }
 
   // Joint first stage solution vector post all gather
   /*
@@ -424,7 +633,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   */
 
   // Now, all ranks have all the solutions.
-
+  // And all ranks know which solution should be used.
 
   // size vector for second stage solutions, one vector for each scenario
   ssSolutions.resize(nlocalscen);
@@ -457,11 +666,15 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // Don't need to sync ssSolution, but I need to store it, just in case
   // this solution is the best.
 
+  // resets value
+  found_sol = 1;
+
   // for each local scenario
   for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
 
     // abort if some rank found no feasible solution
     if (!found_sol) break;
+
     int scen = localScen[localscen];
     int nvar2 = input.nSecondStageVars(scen);
     int ncon2 = input.nSecondStageCons(scen);
@@ -482,14 +695,19 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     // For each solution, solve second stage problem for current scenario,
     for(unsigned soln = 0; soln < nproc; soln++) {
 
+      // ignore solving second stage if not feasible
+      if (!foundSol[soln]) continue;
+
       BBSMPS_ALG_LOG_SEV(debug) << "Considering solution: " << soln;
+
       /*
       cout << "First stage solution being fixed" << endl;
       copy(fsSolutions.begin(), fsSolutions.end(), ostream_iterator<double>(cout, " "));
       cout << endl;
       */
+
       // get pointer to underlying model, easier to query
-      cbcModel = scen_wrap[localscen-1].getModelPtr();
+      cbcModel = scen_wrap[localscen-1]->getModelPtr();
       cbcModel->setLogLevel(0);
 
       // Just to be safe, resetting model solve
@@ -498,13 +716,13 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       // fix first stage variables
       // maybe fix only integer variables?
       for (unsigned col = 0; col < nvar1; col++) {
-	scen_wrap[localscen-1].setColLower(col,fsSolutions[soln*nvar1+col]);
-	scen_wrap[localscen-1].setColUpper(col,fsSolutions[soln*nvar1+col]);
+	scen_wrap[localscen-1]->setColLower(col,fsSolutions[soln*nvar1+col]);
+	scen_wrap[localscen-1]->setColUpper(col,fsSolutions[soln*nvar1+col]);
       }
 
       // sanity check to print lb
       /*
-      const double *lb = scen_wrap[localscen-1].getColLower();
+      const double *lb = scen_wrap[localscen-1]->getColLower();
       cout << "Printing set lower bound" << endl;
       copy(lb, lb+nvar1, ostream_iterator<double>(cout, " "));
       cout << endl;
@@ -520,7 +738,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       // abort if no solution
       // Can't about without an AllReduce Call, exit loop
       if (solVec == NULL) {
-	cout << "Found no feasible solution" << endl;
+	BBSMPS_ALG_LOG_SEV(debug) << "Found no feasible solution";
 	found_sol = 0;
 	break;
       }
@@ -548,7 +766,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
       // Need to get it fresh after the solve, else it seems corrupted.
       // get objective coefficients
-      objVec = scen_wrap[localscen-1].getObjCoefficients();
+      objVec = scen_wrap[localscen-1]->getObjCoefficients();
 
       // Print objective vector
       /*
@@ -618,6 +836,8 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   cout << endl;
   */
 
+  // TODO: Can I use getObjValue() from OsiCbc?
+
   BBSMPS_ALG_LOG_SEV(debug) << "Combining objective value from all scenarios";
 
   // Joint second stage objective vector pre all reduce for all solutions
@@ -647,7 +867,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   BBSMPS_ALG_LOG_SEV(debug) << "Now adding first stage contributions for each solution";
 
   for(unsigned soln = 0; soln < nproc; soln++) {
-    ssObjvalues[soln] += fsObjvalues[soln];
+    // sets to large value if infeasible
+    ssObjvalues[soln] = (foundSol[soln]==1) ? ssObjvalues[soln] + fsObjvalues[soln]
+      : DBL_MAX;
   }
 
   // Objective vector for all solutions
@@ -672,52 +894,43 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // if first stage is binary, I can add no-good cut
   if (fsBinary) {
+
     for(unsigned soln = 0; soln < nproc; soln++) {
 
-      // construct bool vector
-      vector<bool> fsbool(nvar1);
+      // ignore if no solution found.
+      if (!foundSol[soln]) continue;
+
+      // uniqueness check already done
+
+      // add to Cbc objects
+
+      // build row object
+      vector<double> elts(nvar1);
+      double rowlb = 1;
+      double rowub = nvar1;
+
       for (unsigned col = 0; col < nvar1; col++) {
-	fsbool[col] = (isOne(fsSolutions[soln*nproc+col],1e-6)) ? true : false;
+
+	if (isOne(fsSolutions[soln*nvar1+col],1e-6)) {
+	  rowlb -= 1;
+	  rowub -= 1;
+	  elts[col] = -1.0;
+	}
+	else {
+	  elts[col] = 1.0;
+	}
+
       }
 
-      // check if solution soln is unique
-      if (fsCuts.find(fsbool) == fsCuts.end()) {
+      CoinPackedVector vec(nvar1, &elts[0]);
 
-	// add to Cbc objects
-
-	// build row object
-	vector<double> elts(nvar1);
-	double rowlb = 1;
-	double rowub = nvar1;
-
-	for (unsigned col = 0; col < nvar1; col++) {
-
-	  if (fsbool[col]) {
-	    rowlb -= 1;
-	    rowub -= 1;
-	    elts[col] = -1.0;
-	  }
-	  else {
-	    elts[col] = 1.0;
-	  }
-
-	}
-
-	CoinPackedVector vec(nvar1, &elts[0]);
-
-	// for each local scenario
-	for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
-	  scen_wrap[localscen-1].addRow(vec, rowlb, rowub);
-	}
-
-	// insert
-	fsCuts.insert(fsbool);
+      // for each local scenario
+      for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
+	scen_wrap[localscen-1]->addRow(vec, rowlb, rowub);
       }
 
     }
   }
-
-  // Turns out this is not very good solution. Maybe const scenarios?
 
   // Add
   // need to construct densebavector from fssolutions[bestsol]
@@ -788,7 +1001,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   timesSuccessful+=success;
 
   if (0 == mype && success)
-    BBSMPS_ALG_LOG_SEV(warning)
+    BBSMPS_ALG_LOG_SEV(debug)
       << "The scenario decomposition heuristic was successful.";
 
   cumulativeTime+=(MPI_Wtime()-startTimeStamp);
