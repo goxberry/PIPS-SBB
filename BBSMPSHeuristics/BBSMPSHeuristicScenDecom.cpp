@@ -370,6 +370,55 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   }
 
+  // if first stage is binary, I can add no-good cut
+  if (fsBinary) {
+
+    // uniqueness check already done
+    // read from fsSet object
+
+    set<vector<bool> >::iterator it;
+    for (it = fsSet.begin(); it != fsSet.end(); ++it) {
+
+      // add to Cbc objects
+
+      // build row object
+      vector<double> elts(nvar1);
+      double rowlb = 1;
+      double rowub = nvar1;
+
+      for (unsigned col = 0; col < nvar1; col++) {
+
+	// if the col element is true
+	if ((*it)[col]) {
+	  rowlb -= 1;
+	  rowub -= 1;
+	  elts[col] = -1.0;
+	}
+	else {
+	  elts[col] = 1.0;
+	}
+
+      }
+
+      CoinPackedVector vec(nvar1, &elts[0]);
+
+      // for each local scenario
+      for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
+	scen_wrap[localscen-1]->addRow(vec, rowlb, rowub);
+      }
+
+      /*
+      cout << "First stage solution cut added" << endl;
+      copy((*it).begin(), (*it).end(), ostream_iterator<double>(cout, " "));
+      cout << endl;
+      */
+
+    }
+  }
+
+  // clearing the fs cut set
+  fsSet.clear();
+
   BBSMPS_ALG_LOG_SEV(debug) << "Done building single scenario objects";
 
   // size vector of first stage solutions for allgather
@@ -543,8 +592,12 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // Be able to continue with fewer/more solutions than ranks.
   // Done with foundSol indicators
   // only quit if all processes found no solution
-  if (found_sol == 0) return success;
+  if (found_sol == 0) {
 
+    BBSMPS_ALG_LOG_SEV(debug) << "All ranks found no feasible solution. Aborting";
+    return success;
+
+  }
   // Joint first stage solution vector pre all gather
   /*
   cout << "First stage solution before allgather" << endl;
@@ -590,7 +643,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // FS binary is done.
   if (fsBinary) {
 
-    set<vector<bool> > fsSet;
 
     for(unsigned soln = 0; soln < nproc; soln++) {
 
@@ -608,6 +660,12 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
 	// insert
 	fsSet.insert(fsbool);
+
+	/*
+	cout << "First stage solution " << soln << " added to be cut later" << endl;
+	copy(fsbool.begin(), fsbool.end(), ostream_iterator<double>(cout, " "));
+	cout << endl;
+	*/
 
       }
 
@@ -824,7 +882,12 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // TODO: Don't need to abort, can just discard solution
 
   // Abort if some rank found no solution
-  if (!found_sol) return success;
+  if (!found_sol) {
+
+    BBSMPS_ALG_LOG_SEV(debug) << "Some FS solution had no recourse. Aborting";
+    return success;
+
+  }
 
   BBSMPS_ALG_LOG_SEV(debug) << "Now all solutions are fully populated";
 
@@ -892,45 +955,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 					   << bestsol << " with value: "
 					   << ssObjvalues[bestsol];
 
-  // if first stage is binary, I can add no-good cut
-  if (fsBinary) {
-
-    for(unsigned soln = 0; soln < nproc; soln++) {
-
-      // ignore if no solution found.
-      if (!foundSol[soln]) continue;
-
-      // uniqueness check already done
-
-      // add to Cbc objects
-
-      // build row object
-      vector<double> elts(nvar1);
-      double rowlb = 1;
-      double rowub = nvar1;
-
-      for (unsigned col = 0; col < nvar1; col++) {
-
-	if (isOne(fsSolutions[soln*nvar1+col],1e-6)) {
-	  rowlb -= 1;
-	  rowub -= 1;
-	  elts[col] = -1.0;
-	}
-	else {
-	  elts[col] = 1.0;
-	}
-
-      }
-
-      CoinPackedVector vec(nvar1, &elts[0]);
-
-      // for each local scenario
-      for(unsigned localscen = 1; localscen < nlocalscen; localscen++) {
-	scen_wrap[localscen-1]->addRow(vec, rowlb, rowub);
-      }
-
-    }
-  }
 
   // Add
   // need to construct densebavector from fssolutions[bestsol]

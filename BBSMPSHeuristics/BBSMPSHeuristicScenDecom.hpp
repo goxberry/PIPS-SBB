@@ -100,6 +100,9 @@ private:
   std::vector<double> localFsSolns;
   // average first stage solution
   std::vector<double> aveFsSoln;
+  // cuts to add next time around
+  std::set<std::vector<bool> > fsSet;
+
 
 };
 
