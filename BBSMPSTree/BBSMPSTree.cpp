@@ -397,10 +397,10 @@ void BBSMPSTree::generateIncrementalWarmState(BBSMPSNode* node, const BAFlagVect
 
 double BBSMPSTree::getCurrentLB(){
 	if (heap.size()>0){
-		
-		BBSMPSNode *currentNode_ptr=*(heap.begin());	
+
+		BBSMPSNode *currentNode_ptr=*(heap.begin());
 		return currentNode_ptr->getParentObjective();
-			
+
 	}
 
 	return INFINITY;
@@ -783,7 +783,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 					children[i]->setEnqueued(true);
 					children[i]->setEstimation(calculateEstimation(currentNode_ptr));
 					heap.insert(children[i]);
-		
+
 				}
 
 			}
@@ -979,28 +979,28 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
             int rounds=0;
             for (it; it!=heap.end() && rounds<1000; it++,rounds++){
                 if ((*it)->getEstimation()<(*bestNode)->getEstimation())bestNode=it;
-  
+
               //  BBSMPS_ALG_LOG_SEV(warning)<<"guessing iteration "<<rounds<<" "<<(*it)->getEstimation()<<" "<<(*it)->getNodeNumber()<<" vs "<<(*bestNode)->getEstimation()<<" "<<(*bestNode)->getNodeNumber()<<endl;
             }
             if (bestNode!=heap.end()){
                 currentNode_ptr=(*bestNode);
-                heap.erase(bestNode); 
+                heap.erase(bestNode);
 
             }
             else{//this should never happen but you never know
                 currentNode_ptr=*(heap.begin());
-                heap.erase(heap.begin()); 
+                heap.erase(heap.begin());
             }
         }
         else{
            currentNode_ptr=*(heap.begin());
-            heap.erase(heap.begin()); 
+            heap.erase(heap.begin());
         }
-        
+
         int nodenum=currentNode_ptr->getNodeNumber();
 		MPI_Allreduce(MPI_IN_PLACE,&nodenum, 1, MPI_INT,MPI_MIN,BBSMPSSolver::instance()->getBAContext().comm());
 		if (nodenum!=currentNode_ptr->getNodeNumber())cout<<"ERROR IN THE NODE NUMBER!!!!!!!!!"<<endl;
-        
+
 		if (0 == mype && verbosityActivated) BBSMPS_ALG_LOG_SEV(info) << "Copying node " << currentNode_ptr->getNodeNumber() << " off tree.";
 //BAContext &ctx=BBSMPSSolver::instance()->getBAContext();
 		//MPI_Barrier(ctx.comm());
@@ -1243,7 +1243,7 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 					children[i]->setEnqueued(true);
 					children[i]->setEstimation(calculateEstimation(currentNode_ptr));
 					heap.insert(children[i]);
-		
+
 				}
 
 			}
@@ -1386,15 +1386,14 @@ void BBSMPSTree::setNodeLimit(int _nodeLim){
  //heuristicsManager.addLPHeuristic(hr6);
 
     BBSMPSHeuristicFixAndDiveLocks *hr5= new BBSMPSHeuristicFixAndDiveLocks(0,15,"FixAndDiveLocks");
-
     heuristicsManager.addLPHeuristic(hr5);
 
-    BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,1,"ScenDecom",200, 100, false);
+    BBSMPSHeuristicScenDecom *hr7= new BBSMPSHeuristicScenDecom(0,15,"ScenDecom",2000, 120, false, true);
     heuristicsManager.addLPHeuristic(hr7);
 
-   //BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,15,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
+    //BBSMPSHeuristicFixAndDiveLocksScenarioPriority *hr8= new BBSMPSHeuristicFixAndDiveLocksScenarioPriority(0,15,"BBSMPSHeuristicFixAndDiveLocksScenarioPriority");
+    //heuristicsManager.addLPHeuristic(hr8);
 
-   //heuristicsManager.addLPHeuristic(hr8);
     //   BBSMPSHeuristicFixAndDiveScenarioPriority *hr7= new BBSMPSHeuristicFixAndDiveScenarioPriority(0,2,"BBSMPSHeuristicFixAndDiveScenarioPriority");
 	//heuristicsManager.addLPHeuristic(hr7);
   }
@@ -1790,7 +1789,7 @@ int BBSMPSTree::communicate(){
 		//		(node)->printNode();
 				node->setEnqueued(true);
 				heap.insert(node);
-	
+
 				//delete node;
 			}
 		}

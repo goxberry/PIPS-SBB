@@ -63,8 +63,8 @@ public:
   ~BBSMPSHeuristicScenDecom();
 
   BBSMPSHeuristicScenDecom(int offset, int depth, const char *_name,
-			   int _nodeLim, double _timeLim, bool _sameScen):
-    nodeLim(_nodeLim), timeLim(_timeLim), sameScen(_sameScen),
+			   int _nodeLim, double _timeLim, bool _sameScen, bool _updateBnds):
+    nodeLim(_nodeLim), timeLim(_timeLim), sameScen(_sameScen), updateBnds(_updateBnds),
     firstTime(true),
     local_scen_num(0),
     allSolvedOnce(false),
@@ -77,6 +77,8 @@ private:
   int    nodeLim;  // nodes to run B&B on single scen problems
   double timeLim; // timelimit on single scen problem
   bool   sameScen;  // solve all scenarios in rank? Currently not used.
+  bool   updateBnds; // whether to update to node-local bounds
+
   bool   firstTime; // indicator for first call
   int    local_scen_num;  // which local scenario to consider
   bool   allSolvedOnce; // indicator where all local scenarios solved once

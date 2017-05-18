@@ -324,9 +324,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     int nvar2 = input.nSecondStageVars(scen);
     int ncon2 = input.nSecondStageCons(scen);
 
-    // modify bounds based on node bounds
+    // reset bounds to original bounds
     /*
-    if (localscen>0) {
+    if (localscen==1) {
 
       BBSMPS_ALG_LOG_SEV(debug) << "Problem size: " << nvar2 << " " << ncon2 << " " << localscen;
 
@@ -344,27 +344,56 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     }
     */
 
+    // reset to original bounds
     // first stage
     for (unsigned col = 0; col < nvar1; col++) {
-      scen_wrap[localscen-1]->setColLower(col,lb.getFirstStageVec()[col]);
-      scen_wrap[localscen-1]->setColUpper(col,ub.getFirstStageVec()[col]);
+      scen_wrap[localscen-1]->setColLower(col,input.getFirstStageColLB()[col]);
+      scen_wrap[localscen-1]->setColUpper(col,input.getFirstStageColUB()[col]);
     }
-
     // second stage
     for (unsigned col = 0; col < nvar2; col++) {
-      scen_wrap[localscen-1]->setColLower(nvar1+col,lb.getSecondStageVec(scen)[col]);
-      scen_wrap[localscen-1]->setColUpper(nvar1+col,ub.getSecondStageVec(scen)[col]);
+      scen_wrap[localscen-1]->setColLower(nvar1+col,input.getSecondStageColLB(scen)[col]);
+      scen_wrap[localscen-1]->setColUpper(nvar1+col,input.getSecondStageColUB(scen)[col]);
     }
 
-    // Print modified lb
     /*
-    if (localscen>0) {
-      const double *modlb = scen_wrap[localscen-1]->getColLower();
-      cout << "lb after modifying" << endl;
-      copy(modlb, modlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
+    if (localscen==1) {
+
+      // Print original lb
+      const double *testlb = scen_wrap[localscen-1]->getColLower();
+      cout << "Printing previous lower bound" << endl;
+      copy(testlb, testlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
       cout << endl;
     }
     */
+
+    // modify bounds based on node bounds
+
+    if (updateBnds) {
+
+      // first stage
+      for (unsigned col = 0; col < nvar1; col++) {
+	scen_wrap[localscen-1]->setColLower(col,lb.getFirstStageVec()[col]);
+	scen_wrap[localscen-1]->setColUpper(col,ub.getFirstStageVec()[col]);
+      }
+
+      // second stage
+      for (unsigned col = 0; col < nvar2; col++) {
+	scen_wrap[localscen-1]->setColLower(nvar1+col,lb.getSecondStageVec(scen)[col]);
+	scen_wrap[localscen-1]->setColUpper(nvar1+col,ub.getSecondStageVec(scen)[col]);
+      }
+
+      // Print modified lb
+      /*
+      if (localscen>0) {
+	const double *modlb = scen_wrap[localscen-1]->getColLower();
+	cout << "lb after modifying" << endl;
+	copy(modlb, modlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
+	cout << endl;
+      }
+      */
+
+    }
 
     // Important note: Need to offset scen_wrap by -1 since localscen starts at 1
 
@@ -484,6 +513,10 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   copy(oldobjVec, oldobjVec+nvar1, ostream_iterator<double>(cout, " "));
   cout << endl;
   */
+  // TODO: Ideally, should wait till all ranks are solved once. But
+  // it is a heuristic, so for now changing more often
+  // Need to check I am being correct, since they update at different times
+
   // updating delta in objective function if all have been solved once
   for (unsigned col=0; col<nvar1; col++) {
     diffobj[col] = (allSolvedOnce) ? oldobjVec[col] * rho *
@@ -504,6 +537,8 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   cout << "Modified Objective vector" << endl;
   copy(printobjVec, printobjVec+nvar1, ostream_iterator<double>(cout, " "));
   cout << endl;
+  */
+  /*
   cout << "All local First stage solution before solving" << endl;
   copy(localFsSolns.begin(), localFsSolns.end(), ostream_iterator<double>(cout, " "));
   cout << endl;
@@ -519,12 +554,12 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   }
 
   // Print objective vector
-  /*
+
   const double *resetobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
   cout << "Reset back to original Objective vector" << endl;
   copy(resetobjVec, resetobjVec+nvar1, ostream_iterator<double>(cout, " "));
   cout << endl;
-  */
+
 
   // clear up diffobj
   diffobj.clear();
@@ -595,6 +630,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   if (found_sol == 0) {
 
     BBSMPS_ALG_LOG_SEV(debug) << "All ranks found no feasible solution. Aborting";
+    cumulativeTime+=(MPI_Wtime()-startTimeStamp);
     return success;
 
   }
@@ -885,6 +921,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   if (!found_sol) {
 
     BBSMPS_ALG_LOG_SEV(debug) << "Some FS solution had no recourse. Aborting";
+    cumulativeTime+=(MPI_Wtime()-startTimeStamp);
     return success;
 
   }
@@ -1025,7 +1062,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   timesSuccessful+=success;
 
   if (0 == mype && success)
-    BBSMPS_ALG_LOG_SEV(debug)
+    BBSMPS_ALG_LOG_SEV(warning)
       << "The scenario decomposition heuristic was successful.";
 
   cumulativeTime+=(MPI_Wtime()-startTimeStamp);
