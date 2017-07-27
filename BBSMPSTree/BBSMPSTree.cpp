@@ -230,11 +230,22 @@ BBSMPSPseudoCostSmallestScenarioFirstBranchingRule *mfbr2= new BBSMPSPseudoCostS
    //nSolsExchanged=5;
     ////cout<<"total of solutions to exchange is "<<nSolsExchanged<<endl;
     inRampDownMode=false;
+     inRampUpMode=true;
+    inStrictRampDownMode=false;
     totalCommCheckTime=0;
     bufferedV1=vector<double>(4);
     bufferedV2=vector<int>(2);
     bufferedItCounter=0;
     bufferedSmallestHeap=0;
+
+    rampUpIdleTime=0;
+    rampDownIdleTime=0;
+    rampUpCommTime=0;
+    rampDownCommTime=0;
+     totalIdleTime=0;
+    totalCommTime=0;
+
+    timeStampOfLastPrint=MPI_Wtime();
 /*
     BBSMPSCuttingPlaneGeneratorGMI *gmic = new BBSMPSCuttingPlaneGeneratorGMI("GMI");
     gmic->generateCuttingPlane(rootNode,ubPrimalSolution);
@@ -317,9 +328,18 @@ initializationTime(0)
     int BBSMPSProcs=BBSMPSContext.nprocs();
     nSolsExchanged=10;
     inRampDownMode=false;
+    inRampUpMode=true;
+    inStrictRampDownMode=false;
     totalCommCheckTime=0;
     bufferedV1=vector<double>(3);
     bufferedV2=vector<int>(2);
+        rampUpIdleTime=0;
+    rampDownIdleTime=0;
+    rampUpCommTime=0;
+    rampDownCommTime=0;
+     totalIdleTime=0;
+    totalCommTime=0;
+    timeStampOfLastPrint=MPI_Wtime();
 }
 
 BBSMPSTree::~BBSMPSTree(){
@@ -934,6 +954,8 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 				bool launch=shouldWePerformCommunication( counterToLastIter,  commDone);
 				totalCommCheckTime+=(MPI_Wtime()-startCheckpoint);
 				totalCommTime+=(MPI_Wtime()-startCheckpoint);
+				if (inRampUpMode)rampUpCommTime+=(MPI_Wtime()-startCheckpoint);
+				if (rampDownIdleTime)rampDownCommTime+=(MPI_Wtime()-startCheckpoint);
 
 				if (launch ){
 					commDone=true;
@@ -941,6 +963,8 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 	   				double startCheckpoint2=MPI_Wtime();
 					communicate();
 					totalCommTime+=(MPI_Wtime()-startCheckpoint2);
+					if (inRampUpMode)rampUpCommTime+=(MPI_Wtime()-startCheckpoint2);
+					if (rampDownIdleTime)rampDownCommTime+=(MPI_Wtime()-startCheckpoint2);
 				}
 				else{
 					//cout<<bbIterationCounter<<" THREAD "<<mype<<" "<<BBSMPSMyPe<<" DID NOT!!!!! got into communication "<<endl;
@@ -1277,10 +1301,11 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		if (BBSMPSSolver::instance()->getSolPoolSize()>0) objUB=min(objUB,BBSMPSSolver::instance()->getSoln(0).getObjValue());
 
 		bbIterationCounter++;
-		if (0 == mype && verbosityActivated && bbIterationCounter%500==0) {
+		if (0 == mype && verbosityActivated && MPI_Wtime()-timeStampOfLastPrint>25) {
 			double gap = fabs(objUB-objLB)*100/(fabs(objUB)+10e-10);
+			timeStampOfLastPrint=MPI_Wtime();
 			BBSMPS_ALG_LOG_SEV(warning)<<"\n----------------------------------------------------\n"<<
-			"Iteration "<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
+			"Solver:"<<BBSMPSSolver::instance()->getSBBMype()<<":Iteration:"<<bbIterationCounter<<":LB:"<<objLB<<":UB:"<<objUB<<":GAP:"<<gap<<":Tree Size:"<<heap.size()<<":Time:"<<BBSMPSSolver::instance()->getWallTime()<<"\n"<<
 			"----------------------------------------------------";
 		}
 	}
@@ -1297,7 +1322,11 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		double generalBestUB;
 		double generalBestLB;
 		double idleCommTimeSum;
+		double idleCommTimeSumRU;
+		double idleCommTimeSumRD;
 		double CommTimeSum;
+		double CommTimeSumRU;
+		double CommTimeSumRD;
 		int totalNodes;
 		double totalInitTime;
 		double totalInitCommTime;
@@ -1307,7 +1336,12 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 		MPI_Allreduce(&objUB,&generalBestUB, 1, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm());
 		MPI_Allreduce(&objLB,&generalBestLB, 1, MPI_DOUBLE,MPI_MIN,BBSMPSContext.comm());
 		MPI_Allreduce(&totalIdleTime,&idleCommTimeSum, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
+		MPI_Allreduce(&rampUpIdleTime,&idleCommTimeSumRU, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
+		MPI_Allreduce(&rampDownIdleTime,&idleCommTimeSumRD, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
 		MPI_Allreduce(&totalCommTime,&CommTimeSum, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
+		MPI_Allreduce(&rampUpCommTime,&CommTimeSumRU, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
+		MPI_Allreduce(&rampDownCommTime,&CommTimeSumRD, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
+
 		MPI_Allreduce(&bbIterationCounter,&totalNodes, 1, MPI_INT,MPI_SUM,BBSMPSContext.comm());
 		MPI_Allreduce(&initializationTime,&totalInitTime, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
 		MPI_Allreduce(&initializationParallelBranchingCommTime,&totalInitCommTime, 1, MPI_DOUBLE,MPI_SUM,BBSMPSContext.comm());
@@ -1316,7 +1350,9 @@ int BBSMPSProcs=BBSMPSContext.nprocs();
 			double generalGap = fabs(generalBestUB-generalBestLB)*100/(fabs(generalBestUB)+10e-10);
 			BBSMPS_ALG_LOG_SEV(warning)<<"-------------EXPLORATION TERMINATED---------------";
 			BBSMPS_ALG_LOG_SEV(warning)<<"General GAP:"<<generalGap<<":LB:"<<generalBestLB<<":UB:"<<generalBestUB<<":Nodes Solved:"<<totalNodes<<":Useless Nodes:"<<totalUselessNodes;
-			BBSMPS_ALG_LOG_SEV(warning)<<"Number of Communication calls:"<<totalTimesCommCalled<<":Avg. Communication Time:"<<CommTimeSum/BBSMPSProcs<<":Avg. Idle Communication Time:"<<idleCommTimeSum/BBSMPSProcs;
+			BBSMPS_ALG_LOG_SEV(warning)<<"Number of Communication calls:"<<totalTimesCommCalled<<":Avg. Communication Time:"<<CommTimeSum/BBSMPSProcs<<":Avg. Idle Time:"<<idleCommTimeSum/BBSMPSProcs;
+			BBSMPS_ALG_LOG_SEV(warning)<<":Avg. Ramp Up Idle Time:"<<idleCommTimeSumRU/BBSMPSProcs<<":Avg. Ramp Down Idle Time:"<<idleCommTimeSumRD/BBSMPSProcs;
+			BBSMPS_ALG_LOG_SEV(warning)<<":Avg. Ramp Up Communication Time:"<<CommTimeSumRU/BBSMPSProcs<<":Avg. Ramp Down Communication Time:"<<CommTimeSumRD/BBSMPSProcs;
 			BBSMPS_ALG_LOG_SEV(warning)<<"Avg. Initialization Time:"<<totalInitTime/BBSMPSProcs<<":Avg. Initialization Communication Time:"<<totalInitCommTime/BBSMPSProcs;
 		BBSMPS_APP_LOG_SEV(warning)<<boost::format("Branch and Bound took %f seconds") % t;
 		}
@@ -1512,12 +1548,27 @@ int BBSMPSTree::communicate(){
 		if (totalSumOfNodes<BBSMPSProcs)return 0;
 	}
 
+
 	vector<double> allLBsGathered(BBSMPSProcs);
 	double LBToSend=objLB;
 	if (heap.size()==0)LBToSend=COIN_DBL_MAX;
 
 	MPI_Allgather(&LBToSend,1,MPI_DOUBLE, &allLBsGathered[0],1,MPI_DOUBLE,BBSMPSContext.comm());
-	totalIdleTime+=(MPI_Wtime()-startCheckpoint);
+
+	if(inRampUpMode){
+		inRampUpMode=false;
+		for (int i=0; i<BBSMPSProcs; i++){
+			
+			inRampUpMode=(inRampUpMode || allLBsGathered[i]==COIN_DBL_MAX);
+		}
+	}
+	else if(!inStrictRampDownMode){
+		for (int i=0; i<BBSMPSProcs; i++){
+			inStrictRampDownMode=(inStrictRampDownMode || allLBsGathered[i]<=COIN_DBL_MAX);
+		}
+		
+	}
+	//totalIdleTime+=(MPI_Wtime()-startCheckpoint);
 	double iterationIdleTime=(MPI_Wtime()-startCheckpoint);
 
 	double bestLB=COIN_DBL_MAX;
@@ -1823,8 +1874,12 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 	MPI_Status status;
 	if (communicationPending){
 		if (heap.size()==0 || bbIterationCounter<BBSMPSProcs){//taking care of the first iteration
+			double startCheckpoint2=MPI_Wtime();
 			MPI_Wait(request0,&status);
 			MPI_Wait(request1,&status);
+			totalIdleTime+=(MPI_Wtime()-startCheckpoint2);
+			if (inRampUpMode)rampUpIdleTime+=(MPI_Wtime()-startCheckpoint2);
+			if (rampDownIdleTime)rampUpIdleTime+=(MPI_Wtime()-startCheckpoint2);
 		}
 		int flag=0;
 		int flagAux=0;
@@ -1845,6 +1900,8 @@ bool BBSMPSTree::shouldWePerformCommunication(int &counterToLastIter, bool &comm
 				MPI_Wait(request0,&status);
 				MPI_Wait(request1,&status);
 				totalIdleTime+=(MPI_Wtime()-startCheckpoint2);
+				if (inRampUpMode)rampUpIdleTime+=(MPI_Wtime()-startCheckpoint2);
+				if (rampDownIdleTime)rampUpIdleTime+=(MPI_Wtime()-startCheckpoint2);
 				flag=2;
 			}
 		}

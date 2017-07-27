@@ -77,7 +77,7 @@
 //CONSTANTS FOR NOW:
 
 #define MIN_COMM_ITERS 10
-#define MAX_COMM_ITERS 500
+#define MAX_COMM_ITERS 50000
 #define RAMPDOWN_COMM_ITERS 10
 #define COMM_TOL_INIT 0.1
 #define RAMPDOWN_MODE_TOLERANCE 0.1
@@ -209,16 +209,25 @@ private:
   double PreProcessingTime;
   double LPRelaxationValue;
 
+
+  double rampUpIdleTime;
+  double rampDownIdleTime;
+  double rampUpCommTime;
+  double rampDownCommTime;
+
   double totalIdleTime;
   double totalCommTime;
   double totalTimesCommCalled;
   double totalCommCheckTime;
+
+  double timeStampOfLastPrint;
   int nodesFathomed;
   int nodesBecameInteger;
   bool verbosityActivated;
   bool inTermination;
 bool inRampDownMode;
- 
+ bool inRampUpMode;
+  bool inStrictRampDownMode;
 
 vector<double> bufferedV1;
 vector<int> bufferedV2;

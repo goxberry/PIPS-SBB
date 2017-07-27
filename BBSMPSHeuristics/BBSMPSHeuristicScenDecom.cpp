@@ -556,9 +556,9 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // Print objective vector
 
   const double *resetobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
-  cout << "Reset back to original Objective vector" << endl;
-  copy(resetobjVec, resetobjVec+nvar1, ostream_iterator<double>(cout, " "));
-  cout << endl;
+ // cout << "Reset back to original Objective vector" << endl;
+ // copy(resetobjVec, resetobjVec+nvar1, ostream_iterator<double>(cout, " "));
+ // cout << endl;
 
 
   // clear up diffobj
@@ -1062,7 +1062,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   timesSuccessful+=success;
 
   if (0 == mype && success)
-    BBSMPS_ALG_LOG_SEV(warning)
+    BBSMPS_ALG_LOG_SEV(debug)
       << "The scenario decomposition heuristic was successful.";
 
   cumulativeTime+=(MPI_Wtime()-startTimeStamp);

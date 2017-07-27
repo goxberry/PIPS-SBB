@@ -74,7 +74,7 @@ BBSMPSSolver *BBSMPSSolver::initialize(const SMPSInput &_input, int nSolvers){
  if (solverInstance) delete solverInstance;
  //Work the details of the contexts here
 //Initialize global context
-  cout<<"initting, solver size is "<<nSolvers<<endl;
+//  cout<<"initting, solver size is "<<nSolvers<<endl;
  BAContext generalCtx(MPI_COMM_WORLD);
  int generalMype=generalCtx.mype();
  int generalSize=generalCtx.nprocs();
@@ -113,7 +113,7 @@ MPI_Group_incl(generalGroup, pipsSbbContextSize, pipsSbbRanks, &pipsSbbGroup);
  int pipssbbSize;
  MPI_Comm_rank ( pipsSbbComm, &pipssbbMype );
  MPI_Comm_size ( pipsSbbComm, &pipssbbSize );
- cout<<"MYPE "<<generalMype<< " pips "<<pipsMype<<" "<<pipsSize<<" "<<pipssbbMype<<" "<<pipssbbSize<<endl;
+// cout<<"MYPE "<<generalMype<< " pips "<<pipsMype<<" "<<pipsSize<<" "<<pipssbbMype<<" "<<pipssbbSize<<endl;
 
  //Initialize the solver with the three contexts
  solverInstance = new BBSMPSSolver(_input,pipsComm,pipsSbbComm);
@@ -132,7 +132,7 @@ problemData(input,pipsCtx),
 dims(problemData.dims.inner),
 dimsSlacks(dims),
 startTimeStamp(MPI_Wtime()){
-  cout<<"we went through initialization"<<endl;
+ // cout<<"we went through initialization"<<endl;
   rootSolver= new PIPSSInterface(problemData, PIPSSInterface::useDual);
   originalDims=BADimensionsSlacks((*rootSolver).getSlackDims());
   lb = (*rootSolver).getLB();
