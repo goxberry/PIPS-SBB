@@ -54,11 +54,9 @@ public:
   // "Rule of 3". (For C++11, follow "Rule of 5".)
   BBSMPSNode& operator=(const BBSMPSNode& sourceNode) {
 
-    //    if (0 == mype) cout << "Calling copy assignment operator!\n";
     // Check for self-assignment
     if (this == &sourceNode) {
 
-      //if (0 == mype) cout << "Calling self-assignment branch!\n";
       return *this;
     }
 
@@ -81,7 +79,6 @@ public:
     cuttingPlaneUids=sourceNode.cuttingPlaneUids;
 
     // Return existing object for chaining.
-    //if (0 == mype) cout << "Exiting copy assignment operator!\n";
     return *this;
   }
 

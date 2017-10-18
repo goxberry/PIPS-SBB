@@ -81,7 +81,6 @@ BBSMPSNode::BBSMPSNode(int *intVector, double *dblVector){
   parent=NULL;
   childrenAlive=0;
  // int numOfWS=intVector[3];
-  //if (numOfWS!=0)cout<<"ERROR!!!!!! ON NODE NUMBER "<<nodeNumber<<endl;
   partialStartState.resize(intVector[4]);
   vector<variableState> auxVector(4,Basic);
   auxVector[1]=Basic;

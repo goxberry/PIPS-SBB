@@ -266,16 +266,7 @@ int branchCol = getFirstStageMaxFracPartCol(primalSoln,input);
 assert(branchCol > -1); // Should always be true if not integer feasible
 
 if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Branching on first stage variable "<< branchCol <<".";
-/*if (0 == mype){
-  cout<<"Branching on variable "<<branchCol<<" -1 value "<<isFirstStageIntFeas(primalSoln,input);
-  for (int col = 0; col < input.nFirstStageVars(); col++)
-{
-  bool isColInteger = input.isFirstStageColInteger(col);
-  bool isValInteger = isIntFeas(primalSoln.getFirstStageVec()[col], intTol);
-  cout<<"["<<col<<","<<isColInteger<<" "<<isValInteger<<" "<<primalSoln.getFirstStageVec()[col]<<"]";
-}
-cout<<endl;
-}*/
+
 //Create both branching infos
 std::vector<BBSMPSBranchingInfo> bInfosLeftKid;
 std::vector<BBSMPSBranchingInfo> bInfosRightKid;
@@ -364,9 +355,6 @@ std::vector<BBSMPSBranchingInfo> bInfosRightKid;
 		
 	 
 			double score=scoreFunction((downPseudoCost.getSecondStageVec(scen)[col]/downTimes)*downDiff, (upPseudoCost.getSecondStageVec(scen)[col]/upTimes)*upDiff, 0.1667);
-			if (score<0){
-        cout<<" WE GOT AN ERROR!!!"<<score<<" "<<col<<" "<<scen<<" "<<downDiff<<" "<<upDiff<<" "<<downTimes<<" "<<upTimes<<endl;
-      }
 			if (score>maxScore){
 				maxScore=score;
 				maxScen=scen;
@@ -374,8 +362,6 @@ std::vector<BBSMPSBranchingInfo> bInfosRightKid;
 			}
 		}
 	
-//    cout<<"Branching on variable "<<maxCol<<" "<<maxScen<<" value "<<primalSoln.getSecondStageVec(maxScen)[maxCol]<<endl;
-
 	bInfosLeftKid.push_back( BBSMPSBranchingInfo(maxCol, ceil(primalSoln.getSecondStageVec(maxScen)[maxCol]), 'L', 2,maxScen));
 	bInfosRightKid.push_back( BBSMPSBranchingInfo(maxCol, floor(primalSoln.getSecondStageVec(maxScen)[maxCol]), 'U', 2,maxScen));
 }
@@ -465,25 +451,6 @@ compIntInt globalComp;
 localComp.result=bestLocalScenarioSize;
 localComp.rank=bestLocalScen;
 MPI_Allreduce (&localComp, &globalComp, 1, MPI_2INT, MPI_MINLOC, ctx.comm());
-/*if (ctx.assignedScenario(globalComp.rank)){
- // cout<<" and the winner is "<<globalComp.rank<<" "<<globalComp.result<<" "<<isSecondStageIntFeas(primalSoln,globalComp.rank,input)<<endl;
-  if (isSecondStageIntFeas(primalSoln,globalComp.rank,input)==1){
-    int scen=globalComp.rank;
-      for (int col = 0; col < input.nSecondStageVars(scen); col++)
-    {
-
-      bool isColInteger = input.isSecondStageColInteger(scen, col);
-      bool isValInteger = isIntFeas(primalSoln.getSecondStageVec(scen)[col], intTol);
-        double downDiff=primalSoln.getSecondStageVec(scen)[col]-floor(primalSoln.getSecondStageVec(scen)[col]);
-      double upDiff=ceil(primalSoln.getSecondStageVec(scen)[col])-primalSoln.getSecondStageVec(scen)[col];
-      double downTimes=downBranchingHistory.getSecondStageVec(scen)[col];
-      double upTimes=downBranchingHistory.getSecondStageVec(scen)[col];
-    
-   //   cout<<"col "<<col<<" "<<isColInteger<<" "<<isValInteger<<" "<<primalSoln.getSecondStageVec(scen)[col]<<" "<<downDiff<<" "<<downTimes<<" "<<upTimes<<" "<<downTimes<<" "<<scoreFunction((downPseudoCost.getSecondStageVec(scen)[col]/downTimes)*downDiff, (upPseudoCost.getSecondStageVec(scen)[col]/upTimes)*upDiff, 0.1667)<<endl;
-    }
-  }
-}
-if (globalComp.rank<0 || globalComp.rank>=input.nScenarios())cout<<"ATTENTION!!!!!!!!! BAD SCENARIO "<<globalComp.rank<<endl;*/
 if (globalComp.rank==-1) return 0;
 
 if (!everythingSecondStageInitialized[globalComp.rank]){

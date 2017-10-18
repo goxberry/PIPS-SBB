@@ -76,7 +76,7 @@
 
 //CONSTANTS FOR NOW:
 
-#define MIN_COMM_ITERS 10
+#define MIN_COMM_ITERS 100
 #define MAX_COMM_ITERS 50000
 #define RAMPDOWN_COMM_ITERS 10
 #define COMM_TOL_INIT 0.1
@@ -177,10 +177,13 @@ void loadLPHeuristic(BBSMPSHeuristic *heur);
   void setLB(double lb){ objLB=lb;};
   void setUB(double ub){ objUB=ub;};
   void runParallelSBInitialization();
-
+void setOptimalSolution(double opt){
+    optimalSolution=opt;
+  }
+  
 private:
 
-
+ double optimalSolution;
     // Node selection rule, determines which node is chosen next. By default, it is bestbound, 
   // by using the min-heap. To handle other rules, we will need to refactor priority_queue to vector,
   // with make_heap, etc. (Except for depth-first, which doesn't need to make_heap)
@@ -209,7 +212,7 @@ private:
   double PreProcessingTime;
   double LPRelaxationValue;
 
-
+  long long int treeSizeSnapshot;
   double rampUpIdleTime;
   double rampDownIdleTime;
   double rampUpCommTime;

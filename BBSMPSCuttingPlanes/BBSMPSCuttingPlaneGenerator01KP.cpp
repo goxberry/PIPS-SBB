@@ -42,7 +42,6 @@ bool detectKnapsackFirstRow(int i){
         double colUB = BBSMPSSolver::instance()->getOriginalUB().getFirstStageVec()[col];
         if(!isBinary(colLB, colUB, 1e-6) || !input.isFirstStageColInteger(col)|| row.getElements()[j]<0) return false;
     }
-    //////cout<<"ROW "<<i<<" scen -1"<<endl;
     return true;
 }
 
@@ -68,7 +67,6 @@ bool detectKnapsackSecondRow(int i, int scen){
         double colUB = BBSMPSSolver::instance()->getOriginalUB().getSecondStageVec(scen)[col];
         if(!isBinary(colLB, colUB, 1e-6)|| !input.isSecondStageColInteger(scen,col)|| rowW.getElements()[j]<0) return false;
     }
-    //////cout<<"ROW "<<i<<" scen "<<scen<<endl;
     return true;
 }
 
@@ -90,7 +88,6 @@ BBSMPSCuttingPlaneGenerator01KP::BBSMPSCuttingPlaneGenerator01KP( const char *_n
             vector<bool> isKnapsack(numCons2,false);
             int nSecondStageKnaps=0;
             for (int i=0; i<numCons2; i++){
-                //////cout<<"processor "<<mype<<" about to check "<<i<<" "<<scen<<endl;
                 isKnapsack[i]=detectKnapsackSecondRow(i,scen);
                 nSecondStageKnaps+=(isKnapsack[i]);
             }
@@ -147,31 +144,26 @@ BBSMPSCuttingPlaneGenerator01KP::BBSMPSCuttingPlaneGenerator01KP( const char *_n
 
 }
 bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxationSolution, double lbRHS, double ubRHS, CoinIndexedVector &coverExpression, double &coverLB, double &coverUB){
-    //////cout<<"The row is ";
     int nRowElems = row.getNumElements();
     vector< pair < BAIndex, double > > ratios(nRowElems);
 
     double a0;
-    //////cout<<"ubs lbs "<<lbRHS<< "  "<<ubRHS<< "   "<<COIN_DBL_MIN<<"  "<<COIN_DBL_MAX<<endl;
     if (ubRHS==COIN_DBL_MAX){
         double rowElemsAcum=0;
         for (int i=0; i< nRowElems; i++)rowElemsAcum+=row.getElements()[i];
         a0=rowElemsAcum-lbRHS;
-        //////cout<<"WE SWITCHED THE RHS "<<endl;
     }
     else{
         a0=ubRHS;
     }
     for (int i = 0; i < nRowElems; i++){
-        //////cout<<row.getElements()[i]<<"x"<<row.getIndices()[i]<<" ";
         ratios[i].first.scen=-1;
         ratios[i].first.idx=i;
 
         ratios[i].second=LPRelaxationSolution.getFirstStageVec()[row.getIndices()[i]] ;
         if (ubRHS==COIN_DBL_MAX) ratios[i].second= 1-ratios[i].second;
     }
-    //////cout<<"<="<<a0<<endl;
-
+    
     sort(ratios.begin(),ratios.end(),pairObjectSortDec);
     double w =0;
     int j;
@@ -181,7 +173,6 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         int idx=ratios[j].first.idx;
         w+=row.getElements()[idx];
         coverSize++;
-        //////cout<<"Initial cover "<<row.getIndices()[idx]<<" "<<row.getElements()[idx]<<" "<<(LPRelaxationSolution.getFirstStageVec()[row.getIndices()[idx]])<<endl;
         if (w >a0){
             break;
         }
@@ -215,7 +206,6 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         BAIndex aux;
         aux.scen=-1;
         aux.idx=secondOrdering[i].first.idx;
-        //cout<<"second odering is it ordered "<<secondOrdering[i].second<<endl;
         if (isCovered[i]){
             
             double solValue=LPRelaxationSolution.getFirstStageVec()[row.getIndices()[secondOrdering[i].first.idx]];
@@ -246,12 +236,10 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         C2.erase(C2.begin());
     }
 
-    //////cout<<" total sizes "<<C1.size()<<" "<<C2.size()<<" "<<R.size()<<" "<<F.size()<<" total "<<C1.size()+C2.size()+R.size()+F.size()<< " vs "<<nRowElems<<endl;
-
+    
     vector<double> A(nRowElems*100,0);
     vector<double> alphas(nRowElems,0);
     vector<double> z(nRowElems,0);
-    //////cout<<"ch1"<<endl;
     vector<double> elementsOrderedByGroup(nRowElems);
     vector<int> idxsOrderedByGroup(nRowElems);
     
@@ -259,31 +247,25 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         elementsOrderedByGroup[i]=row.getElements()[F[i].idx];
         idxsOrderedByGroup[i]=row.getIndices()[F[i].idx];
     }
-    //////cout<<"ch2"<<endl;
     for (int i=0; i<C2.size();i++){
         elementsOrderedByGroup[i+F.size()]=row.getElements()[C2[i].idx];
         idxsOrderedByGroup[i+F.size()]=row.getIndices()[C2[i].idx];
     }
-    //////cout<<"ch3"<<endl;
     for (int i=0; i<R.size();i++){
         elementsOrderedByGroup[i+F.size()+C2.size()]=row.getElements()[R[i].idx];
         idxsOrderedByGroup[i+F.size()+C2.size()]=row.getIndices()[R[i].idx];
     }
-        //////cout<<"ch4"<<endl;
     for (int om =1; om<= C1.size(); om++) {
 
         A[om]=A[om-1]+row.getElements()[C1[om-1].idx];
-        //cout<<"A{"<<om<<"}="<< A[om]<<" elem just added "<<C1[om-1].idx<<"  rowelem "<<row.getElements()[C1[om-1].idx]<<endl;
     }
     int alpha0 = C1.size()-1;
-    //cout<<"ALPHA 0!! "<<alpha0<<endl;
-
+    
     double cumulativeAlphasSum=0;
     double C2ElemsSum=0;
     for (int j=F.size();j<C2.size()+F.size();j++){
         C2ElemsSum+=elementsOrderedByGroup[j];
     }
-    //cout<<"C2 sum "<<C2ElemsSum<<" "<<a0-C2ElemsSum<<endl;
     //UPLIFTING F VARIABLES 
     for (int i=0; i<F.size();i++){
         if(a0-C2ElemsSum-elementsOrderedByGroup[i]<0)z[i]=0;
@@ -295,26 +277,21 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
                 }
             }
         }
-        //cout<<" for F "<<i<<" we chose a zi of "<<z[i]<<" size is "<<elementsOrderedByGroup[i]<<endl;
         alphas[i]=alpha0-z[i];
         if (C1.size()+cumulativeAlphasSum+alphas[i]+2> A.size()){
             A.resize((C1.size()+cumulativeAlphasSum+alphas[i]+2)*2,0);
         }
-        //cout<<"got here "<<C1.size()+cumulativeAlphasSum+1<<" to "<< C1.size()+cumulativeAlphasSum+alphas[i]<<endl;
         for (int om=C1.size()+cumulativeAlphasSum+1; om <= C1.size()+cumulativeAlphasSum+alphas[i];om++){
             A[om]=9999999999;
-            //cout<<"Resetting position A["<<om<<"]"<<endl;
         }
         for (int om=C1.size()+cumulativeAlphasSum+alphas[i]; om>=0; om--){
             if(om<alphas[i]){
                 if(A[om]>elementsOrderedByGroup[i]){
                     A[om]=elementsOrderedByGroup[i];
-                    //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
                 }
             }
             else{
                 if(A[om]>A[om-alphas[i]]+elementsOrderedByGroup[i]){
-                    //cout<<"Assigning A["<<om<<"]="<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<" before it was "<<A[om]<<endl;
                     A[om]=A[om-alphas[i]]+elementsOrderedByGroup[i];
 
                 }
@@ -332,7 +309,6 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
                     break;
                 }
         }
-        //cout<<" for C2 "<<i<<" we chose a zi of "<<z[i]<<" size is "<<elementsOrderedByGroup[i]<<endl;
         
         remainingC2Sum-=elementsOrderedByGroup[i];
         alphas[i]=z[i]-alpha0;
@@ -342,18 +318,15 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         }
         for (int om=C1.size()+cumulativeAlphasSum+1; om <= C1.size()+cumulativeAlphasSum+alphas[i];om++){
             A[om]=9999999999;
-            //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
         }
         for (int om=C1.size()+cumulativeAlphasSum+alphas[i]; om>=0; om--){
             if(om<alphas[i]){
                 if(A[om]>elementsOrderedByGroup[i]){
                     A[om]=elementsOrderedByGroup[i];
-                    //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
                 }
             }
             else{
                 if(A[om]>A[om-alphas[i]]+elementsOrderedByGroup[i]){
-                    //cout<<"Assigning A["<<om<<"]="<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<" before it was "<<A[om]<<endl;
                     A[om]=A[om-alphas[i]]+elementsOrderedByGroup[i];
                 }
                 
@@ -371,16 +344,12 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         }
       
         alphas[i]=alpha0-z[i];
-         //cout<<" for R "<<i<<" we chose a zi of "<<z[i]<<" size is "<<elementsOrderedByGroup[i]<<" alpha has value "<<alphas[i]<<endl;
         for (int om=alpha0; om>=0; om--){
-          //  //cout<<"checking out "<<om<<" "<<alphas[i]<<endl;
             if(om<alphas[i]){
                 if(A[om]>elementsOrderedByGroup[i])A[om]=elementsOrderedByGroup[i];
-                //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
             }
             else{
                 if(A[om]>A[om-alphas[i]]+elementsOrderedByGroup[i]){
-                    //cout<<"Assigning A["<<om<<"]="<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<" before it was "<<A[om]<<endl;
                     A[om]=A[om-alphas[i]]+elementsOrderedByGroup[i];
                 }
             }
@@ -397,36 +366,29 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
 
         finalAlphas[ptr].second=1;
         finalAlphas[ptr].first=row.getIndices()[C1[i].idx];
-        //////cout<<LPRelaxationSolution.getFirstStageVec()[row.getIndices()[C1[i].idx]]<<" variable "<<C1[i].idx<<" "<<row.getIndices()[C1[i].idx]<<" row weight "<<row.getElements()[C1[i].idx]<<" 1"<<endl;
         ptr++;
         
         
     }
 
-    //////cout<<"Coefficients for UPLIFTED F "<<endl;
     for (int i=0; i<F.size();i++){
         if(alphas[i]>0){
-            //////cout<<LPRelaxationSolution.getFirstStageVec()[idxsOrderedByGroup[i]]<<" variable "<<F[i].idx<<" "<<row.getIndices()[F[i].idx]<<" row weight "<<row.getElements()[F[i].idx]<<" "<<alphas[i]<<endl;
             finalAlphas[ptr].second=alphas[i];
             finalAlphas[ptr].first=row.getIndices()[F[i].idx];
             ptr++;
         }
     }
     
-    //////cout<<"Coefficients for DOWNLIFTING VARIABLES IN C2 "<<endl;
     for (int i=0; i<C2.size();i++){
         if(alphas[i+F.size()]>0){
-            //////cout<<LPRelaxationSolution.getFirstStageVec()[row.getIndices()[C2[i].idx]]<<" variable "<<C2[i].idx<<" "<<row.getIndices()[C2[i].idx]<<" row weight "<<row.getElements()[C2[i].idx]<<" "<<alphas[i+F.size()]<<endl;
             finalAlphas[ptr].second=alphas[i+F.size()];
             finalAlphas[ptr].first=row.getIndices()[C2[i].idx];
             ptr++;
         }
         
     }
-    //////cout<<"Coefficients for UPLIFTED R"<<endl;
     for (int i=0; i<R.size();i++){
         if(alphas[i+F.size()+C2.size()]>0){
-            //////cout<<LPRelaxationSolution.getFirstStageVec()[row.getIndices()[R[i].idx]]<<" variable "<<R[i].idx<<" "<<row.getIndices()[R[i].idx]<<" row weight "<<row.getElements()[R[i].idx]<<" "<<alphas[i+F.size()+C2.size()]<<endl;
             finalAlphas[ptr].second=alphas[i+F.size()+C2.size()];
             finalAlphas[ptr].first=row.getIndices()[R[i].idx];
             ptr++;
@@ -438,11 +400,9 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
     double *v1Elts = coverExpression.denseVector();
     int *v1Idx = coverExpression.getIndices();
 
-    //////cout<<" total pointer size "<<ptr<<endl;
     double rowElemsAcum=0;
     double exprAcum=0;
     for(int i=0; i< ptr; i++){
-        ///cout<<" i "<<i<<" "<<finalAlphas[i].first<<" "<<finalAlphas[i].second<<endl;
         
         v1Idx[i]=finalAlphas[i].first;
         v1Elts[v1Idx[i]]=finalAlphas[i].second;
@@ -451,7 +411,6 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
 
     }
 
-    //////cout<<"alpha 0"<<alpha0<<endl;
     if (ubRHS==COIN_DBL_MAX){
         
         //for (int i=0; i< nRowElems; i++)rowElemsAcum+=row.getElements()[i];
@@ -464,21 +423,18 @@ bool generateFirstStage01KP(CoinShallowPackedVector row, denseBAVector &LPRelaxa
         coverUB=alpha0;
         
     }
-    ////cout<<coverLB<<"<="<<exprAcum<<"<="<<coverUB<<"---->"<<(exprAcum-coverLB>=-10E-6 && exprAcum-coverUB<=10E-6)<<endl;
     if (exprAcum-coverLB>=-10E-6 && exprAcum-coverUB<=10E-6)return false;
 
         return true;
 }
 
 bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVector rowW, denseBAVector &LPRelaxationSolution, double lbRHS, double ubRHS, int scen, CoinIndexedVector &coverExpressionT, CoinIndexedVector &coverExpressionW, double &coverLB, double &coverUB){
-    ////////cout<<"The row is ";
     int nRowTElems = rowT.getNumElements();
     int nRowWElems = rowW.getNumElements();
     
     vector< pair < BAIndex, double > > ratios(nRowWElems+nRowTElems);
 
     double a0;
-    //////cout<<"ubs lbs "<<lbRHS<< "  "<<ubRHS<< "   "<<COIN_DBL_MIN<<"  "<<COIN_DBL_MAX<<endl;
     if (ubRHS==COIN_DBL_MAX){
         double rowElemsAcum=0;
         for (int i=0; i< nRowWElems; i++)rowElemsAcum+=rowW.getElements()[i];
@@ -495,7 +451,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
         ratios[i].first.idx=i;
         ratios[i].second=LPRelaxationSolution.getFirstStageVec()[rowT.getIndices()[i]] ;
         if (ubRHS==COIN_DBL_MAX)ratios[i].second=1-ratios[i].second;
-        //////cout<<rowT.getElements()[i]<<"x"<<rowT.getIndices()[i]<<" "<<ratios[i].second<<endl;
     }
     for (int i = 0; i < nRowWElems; i++){
         
@@ -503,10 +458,8 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
         ratios[i+nRowTElems].first.idx=i;
         ratios[i+nRowTElems].second=LPRelaxationSolution.getSecondStageVec(scen)[rowW.getIndices()[i]] ;
         if (ubRHS==COIN_DBL_MAX)ratios[i+nRowTElems].second=1-ratios[i+nRowTElems].second;
-        //////cout<<rowW.getElements()[i]<<"x"<<rowW.getIndices()[i]<<" "<<ratios[i].second<<endl;
     }
-    //////cout<<"<="<<a0<<endl;
-
+    
     sort(ratios.begin(),ratios.end(),pairObjectSortDec);
     double w =0;
     int j;
@@ -516,11 +469,9 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
         int idx=ratios[j].first.idx; 
         if (ratios[j].first.scen!=-1){
             w+=rowW.getElements()[idx];
-            //////cout<<"WInitial cover idx "<<idx<<" "<<rowW.getIndices()[idx]<<" "<<rowW.getElements()[idx]<<" "<<(LPRelaxationSolution.getSecondStageVec(scen)[rowW.getIndices()[idx]])<<" "<<ratios[j].second<<endl;
         }
         else{
             w+=rowT.getElements()[idx];
-            //////cout<<"TInitial cover "<<idx<<" "<<rowT.getIndices()[idx]<<" "<<rowT.getElements()[idx]<<" "<<(LPRelaxationSolution.getFirstStageVec()[rowT.getIndices()[idx]])<<" "<<ratios[j].second<<endl;
         }
         coverSize++;
         if (w >a0){
@@ -554,7 +505,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
             }
         }
     }   
-    //////cout<<coverSize<<endl;
     
 
     //MAKE C1 and C2, F and R
@@ -579,12 +529,10 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
             else F.push_back(aux);
         }
     }
-    //////cout<<"ch1"<<endl;
     for (int i = secondOrdering.size(); i < nRowWElems+nRowTElems; i++){
         BAIndex aux;
         aux.scen=ratios[i].first.scen;
         aux.idx=ratios[i].first.idx;
-        //////cout<<" items "<<aux.scen<<" "<<aux.idx<< " idx "<<i<<"  "<<nRowWElems<<"  "<<nRowTElems<<endl;
         double solValue;
         if (aux.scen==-1)solValue=LPRelaxationSolution.getFirstStageVec()[rowT.getIndices()[ratios[i].first.idx]];
         else solValue=LPRelaxationSolution.getSecondStageVec(scen)[rowW.getIndices()[ratios[i].first.idx]];
@@ -598,8 +546,7 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
         C2.erase(C2.begin());
     }
 
-    //////cout<<" total sizes "<<C1.size()<<" "<<C2.size()<<" "<<R.size()<<" "<<F.size()<<" total "<<C1.size()+C2.size()+R.size()+F.size()<< " vs "<<nRowWElems+nRowTElems<<endl;
-
+    
     vector<double> A(nRowWElems+nRowTElems*100 ,0);
     vector<double> alphas(nRowWElems+nRowTElems,0);
     vector<double> z(nRowWElems+nRowTElems,0);
@@ -652,23 +599,19 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
     for (int om =1; om<= C1.size(); om++){
         if (C1[om-1].scen==-1){
             A[om]=A[om-1]+rowT.getElements()[C1[om-1].idx];
-            //cout<<"A{"<<om<<"}="<< A[om]<<" elem just added "<<C1[om-1].idx<<"  rowelem "<<rowT.getElements()[C1[om-1].idx]<<endl;
         }
         else{
             A[om]=A[om-1]+rowW.getElements()[C1[om-1].idx];
-            //cout<<"A{"<<om<<"}="<< A[om]<<" elem just added "<<C1[om-1].idx<<"  rowelem "<<rowW.getElements()[C1[om-1].idx]<<endl;
         }
 
     } 
     int alpha0 = C1.size()-1;
-     //cout<<"ALPHA 0!! "<<alpha0<<endl;
-
+    
     double cumulativeAlphasSum=0;
     double C2ElemsSum=0;
     for (int j=F.size();j<C2.size()+F.size();j++){
         C2ElemsSum+=elementsOrderedByGroup[j];
     }
-     //cout<<"C2 sum "<<C2ElemsSum<<endl;
     //UPLIFTING F VARIABLES
     for (int i=0; i<F.size();i++){
         if(a0-C2ElemsSum-elementsOrderedByGroup[i]<0)z[i]=0;
@@ -680,29 +623,24 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
                 }
             }
         }
-        //cout<<" for F "<<i<<" we chose a zi of "<<z[i]<<" size is "<<elementsOrderedByGroup[i]<<endl;
         
         alphas[i]=alpha0-z[i];
         if (C1.size()+cumulativeAlphasSum+alphas[i]+2> A.size()){
             A.resize((C1.size()+cumulativeAlphasSum+alphas[i]+2)*2,0);
         }
-        //cout<<"got here "<<C1.size()+cumulativeAlphasSum+1<<" to "<< C1.size()+cumulativeAlphasSum+alphas[i]<<endl;
         
         for (int om=C1.size()+cumulativeAlphasSum+1; om <= C1.size()+cumulativeAlphasSum+alphas[i];om++){
             A[om]=9999999999;
-              //cout<<"Resetting position A["<<om<<"]"<<endl;
         
         }
         for (int om=C1.size()+cumulativeAlphasSum+alphas[i]; om>=0; om--){
             if(om<alphas[i]){
                 if(A[om]>elementsOrderedByGroup[i]){
                     A[om]=elementsOrderedByGroup[i];
-                    //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
                 }
             }
             else{
                 if(A[om]>A[om-alphas[i]]+elementsOrderedByGroup[i]){
-                    //cout<<"Assigning A["<<om<<"]="<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<" before it was "<<A[om]<<endl;
                     
                     A[om]=A[om-alphas[i]]+elementsOrderedByGroup[i];
                 }
@@ -720,7 +658,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
                     break;
                 }
         }
-        //cout<<" for C2 "<<i<<" we chose a zi of "<<z[i]<<" size is "<<elementsOrderedByGroup[i]<<endl;
         
         remainingC2Sum-=elementsOrderedByGroup[i];
         alphas[i]=z[i]-alpha0;
@@ -731,20 +668,16 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
 
         for (int om=C1.size()+cumulativeAlphasSum+1; om <= C1.size()+cumulativeAlphasSum+alphas[i];om++){
             A[om]=9999999999;
-            //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
         
         }
         for (int om=C1.size()+cumulativeAlphasSum+alphas[i]; om>=0; om--){
             if(om<alphas[i]){
                 if(A[om]>elementsOrderedByGroup[i]){
                     A[om]=elementsOrderedByGroup[i];
-                    //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
                 }
             }
             else{
-                //cout<<"Making the comparison "<<A[om]<<" "<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<endl;
                 if(A[om]>A[om-alphas[i]]+elementsOrderedByGroup[i]){
-                    //cout<<"Assigning A["<<om<<"]="<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<" before it was "<<A[om]<<endl;
                     
                     A[om]=A[om-alphas[i]]+elementsOrderedByGroup[i];
                 }
@@ -762,15 +695,12 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
             }
         }
         alphas[i]=alpha0-z[i];
-         //cout<<" for R "<<i<<" we chose a zi of "<<z[i]<<" size is "<<elementsOrderedByGroup[i]<<" alpha has value "<<alphas[i]<<endl;
         
         for (int om=alpha0; om>=0; om--){
-          // //cout<<"checking out "<<om<<" "<<alphas[i]<<endl;
             
             if(om<alphas[i]){
                 if(A[om]>elementsOrderedByGroup[i]){
                     A[om]=elementsOrderedByGroup[i];
-                    //cout<<"Assigning A["<<om<<"]="<<A[om]<<endl;
                 }
                 
             }
@@ -779,7 +709,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
                     
                 if(A[om]>A[om-alphas[i]]+elementsOrderedByGroup[i]){
                     A[om]=A[om-alphas[i]]+elementsOrderedByGroup[i];
-                     //cout<<"Assigning A["<<om<<"]="<<A[om-alphas[i]]+elementsOrderedByGroup[i]<<" before it was "<<A[om]<<endl;
                  }
                 
             }
@@ -790,21 +719,18 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
 
     int tPtr=0;
     int wPtr=0;
-    //////cout<<"Coefficients for UPLIFTED F "<<endl;
-
+    
 
     for (int i=0; i<C1.size();i++){
         
         if(C1[i].scen==-1){
             finalAlphasT[tPtr].second=1;
             finalAlphasT[tPtr].first=rowT.getIndices()[C1[i].idx];
-            /////cout<<LPRelaxationSolution.getFirstStageVec()[rowT.getIndices()[C1[i].idx]]<<" variable "<<C1[i].idx<<" "<<rowT.getIndices()[C1[i].idx]<<" row weight "<<rowT.getElements()[C1[i].idx]<<" 1"<<endl;
             tPtr++;
         }
         else {
             finalAlphasW[wPtr].second=1;
             finalAlphasW[wPtr].first=rowW.getIndices()[C1[i].idx];
-            //////cout<<LPRelaxationSolution.getSecondStageVec(scen)[rowT.getIndices()[C1[i].idx]]<<" variable "<<C1[i].idx<<" "<<rowW.getIndices()[C1[i].idx]<<" row weight "<<rowW.getElements()[C1[i].idx]<<" 1"<<endl;
             wPtr++;
         }
 
@@ -817,54 +743,44 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
             if(scensOrderedByGroup[i]==-1){
                 finalAlphasT[tPtr].second=alphas[i];
                 finalAlphasT[tPtr].first=rowT.getIndices()[F[i].idx];
-                //cout<<LPRelaxationSolution.getFirstStageVec()[idxsOrderedByGroup[i]]<<" variable "<<F[i].idx<<" "<<rowT.getIndices()[F[i].idx]<<" row weight "<<rowT.getElements()[F[i].idx]<<" "<<alphas[i]<<endl;
                 tPtr++;
             }
             else {
                 finalAlphasW[wPtr].second=alphas[i];
                 finalAlphasW[wPtr].first=rowW.getIndices()[F[i].idx];
-                //cout<<LPRelaxationSolution.getSecondStageVec(scen)[idxsOrderedByGroup[i]]<<" variable "<<F[i].idx<<" "<<rowW.getIndices()[F[i].idx]<<" row weight "<<rowW.getElements()[F[i].idx]<<" "<<alphas[i]<<endl;
                 wPtr++;
             }
 
         }
         
     }
-        //
-    //////cout<<"Coefficients for DOWNLIFTING VARIABLES IN C2 "<<endl;
     for (int i=0; i<C2.size();i++){
         if (alphas[i+F.size()]>0){
             if(scensOrderedByGroup[i+F.size()]==-1){
                 finalAlphasT[tPtr].second=alphas[i+F.size()];
                 finalAlphasT[tPtr].first=rowT.getIndices()[C2[i].idx];
-                //cout<<LPRelaxationSolution.getFirstStageVec()[rowT.getIndices()[C2[i].idx]]<<" variable "<<C2[i].idx<<" "<<rowT.getIndices()[C2[i].idx]<<" row weight "<<rowT.getElements()[C2[i].idx]<<" "<<alphas[i+F.size()]<<endl;
                 tPtr++;
             }
             else {
                 finalAlphasW[wPtr].second=alphas[i+F.size()];
                 finalAlphasW[wPtr].first=rowW.getIndices()[C2[i].idx];
-                //cout<<LPRelaxationSolution.getSecondStageVec(scen)[rowW.getIndices()[C2[i].idx]]<<" variable "<<C2[i].idx<<" "<<rowW.getIndices()[C2[i].idx]<<" row weight "<<rowW.getElements()[C2[i].idx]<<" "<<alphas[i+F.size()]<<endl;
                 wPtr++;
             } 
         }
     }
-    //////cout<<"Coefficients for UPLIFTED R"<<endl;
     for (int i=0; i<R.size();i++){
         if (alphas[i+F.size()+C2.size()]>0){
             if(scensOrderedByGroup[i+F.size()+C2.size()]==-1){
                 finalAlphasT[tPtr].second=alphas[i+F.size()+C2.size()];
                 finalAlphasT[tPtr].first=rowT.getIndices()[R[i].idx];
-                //cout<<LPRelaxationSolution.getFirstStageVec()[rowT.getIndices()[R[i].idx]]<<" variable "<<R[i].idx<<" "<<rowT.getIndices()[R[i].idx]<<" row weight "<<rowT.getElements()[R[i].idx]<<" "<<alphas[i+F.size()+C2.size()]<<endl;
                 tPtr++;
             }
             else {
                 finalAlphasW[wPtr].second=alphas[i+F.size()+C2.size()];
                 finalAlphasW[wPtr].first=rowW.getIndices()[R[i].idx];
-                //cout<<LPRelaxationSolution.getSecondStageVec(scen)[rowW.getIndices()[R[i].idx]]<<" variable "<<R[i].idx<<" "<<rowW.getIndices()[R[i].idx]<<" row weight "<<rowW.getElements()[R[i].idx]<<" "<<alphas[i+F.size()+C2.size()]<<endl;
                 wPtr++;
             }
         }
-        //
     }
     finalAlphasT.resize(tPtr);
     finalAlphasW.resize(wPtr);
@@ -877,7 +793,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
     double rowElemsAcum=0;
     double exprAcum=0;
     for(int i=0; i< tPtr; i++){
-            //////cout<<" i "<<i<<" "<<finalAlphasT[i].first<<" "<<finalAlphasT[i].second<<endl;
             rowElemsAcum+=finalAlphasT[i].second;
             v1Idx[ptr]=finalAlphasT[i].first;
             v1Elts[v1Idx[ptr]]=finalAlphasT[i].second;
@@ -892,7 +807,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
     v1Idx = coverExpressionW.getIndices();
     ptr=0;
     for(int i=0; i< wPtr; i++){
-        //////cout<<" i "<<i<<" "<<finalAlphasW[i].first<<" "<<finalAlphasW[i].second<<endl;
         rowElemsAcum+=finalAlphasW[i].second;
         v1Idx[ptr]=finalAlphasW[i].first;
         v1Elts[v1Idx[ptr]]=finalAlphasW[i].second;
@@ -903,7 +817,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
 
     
 
-    //////cout<<"alpha 0"<<alpha0<<endl;
     if (ubRHS==COIN_DBL_MAX){
         
 
@@ -916,7 +829,6 @@ bool generateSecondStage01KP(CoinShallowPackedVector rowT,CoinShallowPackedVecto
         coverUB=alpha0;
         
     }
-    ////cout<<coverLB<<"<="<<exprAcum<<"<="<<coverUB<<"---->"<<(exprAcum-coverLB>=-10E-6 && exprAcum-coverUB<=10E-6)<<endl;
     if (exprAcum-coverLB>=-10E-6 && exprAcum-coverUB<=10E-6)return false;
 
     return true;
@@ -936,7 +848,6 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
     for (int i=0; i<kr1.getNumElements(); i++){
 
         int rowIdx = kr1.getIndices()[i];
-        //cout<<"DOING ROW "<<rowIdx<<"--------------------------------"<<endl;
         //For each row in first stage determine if it is a knapsack.
         CoinShallowPackedVector row = rootSolver.retrieveARow(rowIdx);
 
@@ -954,8 +865,7 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
             valid+=generateFirstStage01KP(row,LPRelaxationSolution,lbRHS,ubRHS,v1,coverLB,coverUB);
         }
         MPI_Bcast(&valid,1,MPI_INT,0,ctx.comm());
-        //////cout<<"valid "<<valid<<endl;
-
+    
         if(valid){
 
             int nElems=0;
@@ -976,7 +886,6 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
                 indexSum+=v1222.getIndices()[j];
                 cuofSum+=v1222.getIndices()[j]*v1222.denseVector()[v1222.getIndices()[j]];
             }
-            //////cout<<" ROW "<<rowIdx<<" "<<indexSum<<" "<<cuofSum<<" "<<coverLB<<" "<<coverUB<<endl;
             BBSMPSCuttingPlane *plane= new BBSMPSCuttingPlane(coverLB,coverUB,cutExpression);
             node->addCuttingPlane(plane);
             planesAdded=true;
@@ -997,7 +906,6 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
             numCons2= kr2.getNumElements();
         }
         MPI_Allreduce(MPI_IN_PLACE,&numCons2,1,MPI_INT,MPI_MAX,ctx.comm());
-        //////cout<<"NUMCONS "<<numCons2<<endl;
         for (int i=0; i<numCons2; i++){
             
             //Stage 2: generate initial cover
@@ -1010,8 +918,7 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
             int valid=0;
             if(ctx.assignedScenario(scen)) {
                 int rowIdx = kr2.getIndices()[i];
-                //cout<<"DOING ROW "<<rowIdx<<" , "<<scen<<"--------------------------------"<<endl;
-                 CoinShallowPackedVector rowT = rootSolver.retrieveTRow(rowIdx,scen);
+                CoinShallowPackedVector rowT = rootSolver.retrieveTRow(rowIdx,scen);
                 CoinShallowPackedVector rowW = rootSolver.retrieveWRow(rowIdx,scen);
                 double lbRHS=BBSMPSSolver::instance()->getOriginalLB().getSecondStageVec(scen)[dimsSlacks.inner.numSecondStageVars(scen)+rowIdx];
                 double ubRHS=BBSMPSSolver::instance()->getOriginalUB().getSecondStageVec(scen)[dimsSlacks.inner.numSecondStageVars(scen)+rowIdx];
@@ -1021,7 +928,6 @@ bool BBSMPSCuttingPlaneGenerator01KP::generateCuttingPlane(BBSMPSNode* node, den
                 v2.clear();
                 valid=generateSecondStage01KP(rowT,rowW,LPRelaxationSolution,lbRHS,ubRHS,scen,v1,v2,coverLB,coverUB);
             }
-            //////cout<<valid<<endl;
             MPI_Allreduce(MPI_IN_PLACE,&valid,1,MPI_INT,MPI_SUM,ctx.comm());
             if(valid){
 

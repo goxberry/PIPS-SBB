@@ -18,15 +18,13 @@ int BBSMPSHeuristicLockRounding::findAndFixFirstStageConstraint(denseBAVector &r
     int firstStageVars=input.nFirstStageVars();
     int firstStageRows=input.nFirstStageCons();
 
-    //cout<<"ff1"<<endl;
-	//First check first stage
+    //First check first stage
 	bool allRowsFeasible=true;
 	
 
 	for (int c=0; c< firstStageRows &&allRowsFeasible; c++){
 		int brokenDirection=rootSolver.isRowFeasible(c, -1, roundedSolution);
-		//cout<<"Trying to fix constraint "<<c<<" which is broken on the side "<<brokenDirection<<endl;
-    		
+			
 		if (brokenDirection!=1){
 			allRowsFeasible=false;
 			const CoinShallowPackedVector row=rootSolver.retrieveARow(c);
@@ -60,7 +58,6 @@ int BBSMPSHeuristicLockRounding::findAndFixFirstStageConstraint(denseBAVector &r
 
 	    	}
 	    	if (varIndexOfBestLock != -1 && directionToRound==0){//Round down variable
-	    		//cout<<"rounded var "<<varIndexOfBestLock<<" to be "<<floor(roundedSolution.getFirstStageVec()[varIndexOfBestLock])<<endl;
 	    		roundedSolution.getFirstStageVec()[varIndexOfBestLock]=floor(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 	    		lb.getFirstStageVec()[varIndexOfBestLock]=floor(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 	    		
@@ -69,7 +66,6 @@ int BBSMPSHeuristicLockRounding::findAndFixFirstStageConstraint(denseBAVector &r
 	    		return 2;
 	    	}
 	    	else if (varIndexOfBestLock != -1 && directionToRound==1){//Round up variable
-	    		//cout<<"rounded var "<<varIndexOfBestLock<<" to be "<<ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock])<<endl;
 	    		roundedSolution.getFirstStageVec()[varIndexOfBestLock]=ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 	    		lb.getFirstStageVec()[varIndexOfBestLock]=ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 	    		ub.getFirstStageVec()[varIndexOfBestLock]=ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
@@ -94,8 +90,7 @@ int BBSMPSHeuristicLockRounding::findAndFixFirstStageConstraint(denseBAVector &r
 			for (int c = 0; c < input.nSecondStageCons(scen) && allRowsFeasible; c++)
 			{
 				int brokenDirection=rootSolver.isRowFeasible(c, scen, roundedSolution);
-				////cout<<"Trying to fix constraint "<<c<<" s"<<scen<<" which is broken on the side "<<brokenDirection<<endl;
-		    		
+					
 				if (brokenDirection!=1){
 					allRowsFeasible=false;
 					
@@ -140,7 +135,6 @@ int BBSMPSHeuristicLockRounding::findAndFixFirstStageConstraint(denseBAVector &r
 
 	if (best[1]==mype && best[0]!=COIN_DBL_MAX){
 		if (varIndexOfBestLock != -1 && directionToRound==0){//Round down variable
-			////cout<<"rounded var "<<varIndexOfBestLock<<" to be "<<floor(roundedSolution.getFirstStageVec()[varIndexOfBestLock])<<endl;
 			roundedSolution.getFirstStageVec()[varIndexOfBestLock]=floor(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 			lb.getFirstStageVec()[varIndexOfBestLock]=floor(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 			
@@ -149,7 +143,6 @@ int BBSMPSHeuristicLockRounding::findAndFixFirstStageConstraint(denseBAVector &r
 			return 2;
 		}
 		else if (varIndexOfBestLock != -1 && directionToRound==1){//Round up variable
-			////cout<<"rounded var "<<varIndexOfBestLock<<" to be "<<ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock])<<endl;
 			roundedSolution.getFirstStageVec()[varIndexOfBestLock]=ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 			lb.getFirstStageVec()[varIndexOfBestLock]=ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
 			ub.getFirstStageVec()[varIndexOfBestLock]=ceil(roundedSolution.getFirstStageVec()[varIndexOfBestLock]);
@@ -174,8 +167,7 @@ int BBSMPSHeuristicLockRounding::findFreshFirstStageVar(denseBAVector &roundedSo
 		PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
    		
 	const denseBAVector varObjectives = rootSolver.getVarObjective();
-    //cout<<"FF1"<<endl;
-	int roundDirection;
+    int roundDirection;
 	for (int v=0; v<input.nFirstStageVars(); v++){
 		if(input.isFirstStageColInteger(v) && !isIntFeas(roundedSolution.getFirstStageVec()[v],intTol)){
 			//We have a possible candidate
@@ -198,14 +190,12 @@ int BBSMPSHeuristicLockRounding::findFreshFirstStageVar(denseBAVector &roundedSo
 
 	if (bestLockIndex!=-1){
 		if (roundDirection==1) {
-			//cout<<"rounded var "<<bestLockIndex<<" "<<maxLock<<" to be "<<ceil(roundedSolution.getFirstStageVec()[bestLockIndex])<<endl;	
 			roundedSolution.getFirstStageVec()[bestLockIndex]=ceil(roundedSolution.getFirstStageVec()[bestLockIndex]);
 			lb.getFirstStageVec()[bestLockIndex]=ceil(roundedSolution.getFirstStageVec()[bestLockIndex]);
 			ub.getFirstStageVec()[bestLockIndex]=ceil(roundedSolution.getFirstStageVec()[bestLockIndex]);
 			return 1;
 		}
 		else{
-			//cout<<"rounded var "<<bestLockIndex<<" "<<maxLock<<" to be "<<floor(roundedSolution.getFirstStageVec()[bestLockIndex])<<endl;
 			roundedSolution.getFirstStageVec()[bestLockIndex]=floor(roundedSolution.getFirstStageVec()[bestLockIndex]);
 			lb.getFirstStageVec()[bestLockIndex]=floor(roundedSolution.getFirstStageVec()[bestLockIndex]);
 			ub.getFirstStageVec()[bestLockIndex]=floor(roundedSolution.getFirstStageVec()[bestLockIndex]);
@@ -225,16 +215,14 @@ int BBSMPSHeuristicLockRounding::findAndFixSecondStageConstraint(denseBAVector &
    
 	//First check first stage
 	bool allRowsFeasible=true;
-	//cout<<"ff2"<<endl;
-
+	
 	for (int scen = 0; scen < input.nScenarios() && allRowsFeasible; scen++)
 	{
 		if(ctx.assignedScenario(scen)) {
 			for (int c = 0; c < input.nSecondStageCons(scen) && allRowsFeasible; c++)
 			{
 				int brokenDirection=rootSolver.isRowFeasible(c, scen, roundedSolution);
-				//cout<<"Trying to fix constraint "<<c<<" s"<<scen<<" which is broken on the side "<<brokenDirection<<endl;
-		    		
+					
 				if (brokenDirection!=1){
 					allRowsFeasible=false;
 					
@@ -273,7 +261,6 @@ int BBSMPSHeuristicLockRounding::findAndFixSecondStageConstraint(denseBAVector &
 			    	}
 			    
 					if (varIndexOfBestLock != -1 && directionToRound==0){//Round down variable
-						//cout<<"rounded var "<<varIndexOfBestLock<<" to be "<<floor(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock])<<endl;
 						roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]=floor(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]);
 						lb.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]=floor(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]);
 						ub.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]=floor(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]);
@@ -281,7 +268,6 @@ int BBSMPSHeuristicLockRounding::findAndFixSecondStageConstraint(denseBAVector &
 						return 2;
 					}
 					else if (varIndexOfBestLock != -1 && directionToRound==1){//Round up variable
-						//cout<<"rounded var "<<varIndexOfBestLock<<" to be "<<ceil(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock])<<endl;
 						roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]=ceil(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]);
 						lb.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]=ceil(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]);
 						ub.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]=ceil(roundedSolution.getSecondStageVec(scenOfBestLock)[varIndexOfBestLock]);
@@ -308,7 +294,6 @@ int BBSMPSHeuristicLockRounding::findFreshSecondStageVar(denseBAVector &roundedS
 	double maxLock=COIN_DBL_MIN;
 	int roundDirection;
 	double objCont=COIN_DBL_MAX;//We are trying to minimize
-	//cout<<"FF2"<<endl;	
 	for (int scen = 0; scen < input.nScenarios(); scen++)
 	{
 		if(ctx.assignedScenario(scen)) {
@@ -335,7 +320,6 @@ int BBSMPSHeuristicLockRounding::findFreshSecondStageVar(denseBAVector &roundedS
 	}
 	if (bestLockIndex!=-1){
 		if (roundDirection==1) {
-			//cout<<"rounded var "<<bestLockIndex<<" s"<<bestLockScen<<" "<<maxLock<<" to be "<<ceil(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex])<<endl;	
 			roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]=ceil(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			lb.getSecondStageVec(bestLockScen)[bestLockIndex]=ceil(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			ub.getSecondStageVec(bestLockScen)[bestLockIndex]=ceil(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
@@ -343,7 +327,6 @@ int BBSMPSHeuristicLockRounding::findFreshSecondStageVar(denseBAVector &roundedS
 			return 1;
 		}
 		else{
-			//cout<<"rounded var "<<bestLockIndex<<" s"<<bestLockScen<<" "<<maxLock<<" to be "<<floor(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex])<<endl;
 			roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]=floor(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			lb.getSecondStageVec(bestLockScen)[bestLockIndex]=floor(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
 			ub.getSecondStageVec(bestLockScen)[bestLockIndex]=floor(roundedSolution.getSecondStageVec(bestLockScen)[bestLockIndex]);
@@ -361,7 +344,6 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 	int mype=BBSMPSSolver::instance()->getMype();
 	if (0 == mype) BBSMPS_ALG_LOG_SEV(info) << "Performing the Lock Rounding heuristic.";
 	timesCalled++;
-	//cout<<"ch1"<<endl;
 	SMPSInput &input =BBSMPSSolver::instance()->getSMPSInput();
 	
 	const BADimensionsSlacks &originalDimensions= BBSMPSSolver::instance()->getBADimensionsSlacks();
@@ -378,9 +360,7 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 	downLocks.allocate(dimsSlacks, ctx, PrimalVector);
    	upLocks.clear();
    	downLocks.clear();
-    //cout<<"ch2"<<endl;
     generateLocks(upLocks,downLocks);
-    //cout<<"ch3"<<endl;
     
 	int MAX_ITERS=firstStageVars;
    	for (int scen = 0; scen < input.nScenarios(); scen++)
@@ -395,22 +375,17 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
     denseBAVector lb(BBSMPSSolver::instance()->getOriginalLB());
 	denseBAVector ub(BBSMPSSolver::instance()->getOriginalUB());
 	node->getAllBranchingInformation(lb,ub);
-	//cout<<"ch4"<<endl;
-
+	
 	BAFlagVector<variableState> ps(BBSMPSSolver::instance()->getOriginalWarmStart());
 	node->reconstructWarmStartState(ps);
 	rootSolver.setStates(ps);
-//cout<<"ch5"<<endl;
 	int iter=0;
     while (!isLPFeasible && iter<MAX_ITERS){
     	iter++;
-    	////cout<<"ITERATIOOOOOOOOOON!!! "<<endl;
-	    bool done=false;
-	    //cout<<"ch6"<<endl;
-	   	while (!done){
+    	bool done=false;
+	    while (!done){
 
 	    	int result= findAndFixFirstStageConstraint(roundedSolution,upLocks,downLocks,lb,ub);
-	    	//cout<<"ch7"<<endl;
 	    	if (result<2){
 	    		//Then we have failed at recovering or it is all good. Either case, check for more integer vars.
 	    		int fresh1VarRes=findFreshFirstStageVar(roundedSolution,upLocks,downLocks,lb,ub);
@@ -418,7 +393,7 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 	    			done=true;
 	    		}
 	    	}
-	    	//cout<<"ch8"<<endl;
+	    	
 	    }
 
 	    
@@ -439,21 +414,17 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 
 	    roundedSolution=(rootSolver.getPrimalSolution());
 
-	    //cout<<"ch9"<<endl;
-		done=false;
+	    done=false;
 
 	    while (!done){
-	    	//cout<<"ch10"<<endl;
-			//Then we have failed at finding a new first stage variable. Let's look for second stage consts for fixing
+	    	//Then we have failed at finding a new first stage variable. Let's look for second stage consts for fixing
 			int result2= findAndFixSecondStageConstraint(roundedSolution,upLocks,downLocks,lb,ub);
-			//cout<<"ch11"<<endl;
-			////cout<<"We returned "<<result2<<endl;
 			if (result2<2){
 				//Then we have failed at recovering or it is all good. Either case, check for more 2nd stage integer vars
 				int fresh2VarRes=findFreshSecondStageVar(roundedSolution,upLocks,downLocks,lb,ub);
 				if (fresh2VarRes==0)done=true;
 			}
-			//cout<<"ch12"<<endl;
+			
 		}
 
 		rootSolver.setLB(lb);
@@ -472,12 +443,11 @@ bool BBSMPSHeuristicLockRounding::runHeuristic(BBSMPSNode* node, denseBAVector &
 	    roundedSolution=(rootSolver.getPrimalSolution());
 
 	    isLPFeasible = isLPIntFeas(roundedSolution);
-	    //cout<<"ch13"<<endl;
-	    ////cout<<"Are we LP Feasible "<<isLPFeasible<<endl;
+
 	}
 
 	
-		solverState lpStatus = rootSolver.getStatus();
+	solverState lpStatus = rootSolver.getStatus();
 	bool otherThanOptimal = (Optimal != lpStatus); 
 	
 	double objUB=COIN_DBL_MAX;
@@ -560,8 +530,7 @@ bool BBSMPSHeuristicLockRounding::shouldItRun(BBSMPSNode* node, denseBAVector &L
 
 	nIntVars+=totalIntVars2;
 	numberOfFractionalVariables=+totalCount2;
-	//cout<<"Total number of frac vars "<<numberOfFractionalVariables<<" n int vars "<<nIntVars<<	" ratio "<<(numberOfFractionalVariables*100/nIntVars)<<endl;
-	
+
 	if (nIntVars==0)return false;
 	return ((numberOfFractionalVariables*100/nIntVars)<400 );
 

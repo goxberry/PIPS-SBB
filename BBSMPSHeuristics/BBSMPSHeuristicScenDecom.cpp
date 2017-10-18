@@ -332,12 +332,10 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
       // Print original lb
       const double *testlb = scen_wrap[localscen-1]->getColLower();
-      cout << "Printing previous lower bound" << endl;
       copy(testlb, testlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-      cout << endl;
+    
       //TODO: Something is messed up here, but we reset bounds, so for now it is okay.
 
-      cout << "Printing node lb, including slacks" << endl;
       lb.getFirstStageVec().print();
       lb.getSecondStageVec(scen).print();
 
@@ -356,16 +354,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       scen_wrap[localscen-1]->setColUpper(nvar1+col,input.getSecondStageColUB(scen)[col]);
     }
 
-    /*
-    if (localscen==1) {
 
-      // Print original lb
-      const double *testlb = scen_wrap[localscen-1]->getColLower();
-      cout << "Printing previous lower bound" << endl;
-      copy(testlb, testlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-      cout << endl;
-    }
-    */
 
     // modify bounds based on node bounds
 
@@ -383,15 +372,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 	scen_wrap[localscen-1]->setColUpper(nvar1+col,ub.getSecondStageVec(scen)[col]);
       }
 
-      // Print modified lb
-      /*
-      if (localscen>0) {
-	const double *modlb = scen_wrap[localscen-1]->getColLower();
-	cout << "lb after modifying" << endl;
-	copy(modlb, modlb+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-	cout << endl;
-      }
-      */
+     
 
     }
 
@@ -436,11 +417,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 	scen_wrap[localscen-1]->addRow(vec, rowlb, rowub);
       }
 
-      /*
-      cout << "First stage solution cut added" << endl;
-      copy((*it).begin(), (*it).end(), ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
+  
 
     }
   }
@@ -508,11 +485,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // get objective coefficients
   const double *oldobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
   // Print objective vector
-  /*
-  cout << "Old Objective vector" << endl;
-  copy(oldobjVec, oldobjVec+nvar1, ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
+
   // TODO: Ideally, should wait till all ranks are solved once. But
   // it is a heuristic, so for now changing more often
   // Need to check I am being correct, since they update at different times
@@ -531,18 +504,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     scen_wrap[local_scen_num-1]->setObjCoeff(col, oldobjVec[col]+diffobj[col]);
   }
 
-  // Print objective vector
-  /*
-  const double *printobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
-  cout << "Modified Objective vector" << endl;
-  copy(printobjVec, printobjVec+nvar1, ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
-  /*
-  cout << "All local First stage solution before solving" << endl;
-  copy(localFsSolns.begin(), localFsSolns.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
+
 
   // Solving directly with Cbc
   cbcModel->branchAndBound();
@@ -556,9 +518,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   // Print objective vector
 
   const double *resetobjVec = scen_wrap[local_scen_num-1]->getObjCoefficients();
- // cout << "Reset back to original Objective vector" << endl;
- // copy(resetobjVec, resetobjVec+nvar1, ostream_iterator<double>(cout, " "));
- // cout << endl;
+
 
 
   // clear up diffobj
@@ -587,21 +547,11 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     diffFsSol[col] = (allSolvedOnce) ? (fsSolVec[col] - localFsSolns[(local_scen_num-1)*nvar1+col])/ (nscen + 0.0) : fsSolVec[col] / (nscen + 0.0);
   }
 
-  /*
-  cout << "Diff First stage solution" << endl;
-  copy(diffFsSol.begin(), diffFsSol.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   // assigns to localFsSolns
   memcpy(&localFsSolns[(local_scen_num-1)*nvar1], &fsSolVec[0], nvar1*sizeof(double));
 
   // Print first stage solution vector
-  /*
-  cout << "All local First stage solution" << endl;
-  copy(localFsSolns.begin(), localFsSolns.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   // MPI call to share which ranks found first-stage solutions
   MPI_Allgather(&found_sol, 1, MPI_INT,
@@ -617,11 +567,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // Abort if all ranks found no solution
   BBSMPS_ALG_LOG_SEV(debug) << "Number of ranks that found a solution " << found_sol;
-  /*
-  cout << "Vector of feasible solution indicators" << endl;
-  copy(foundSol.begin(), foundSol.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   // Continue as long as someone has a solution
   // Be able to continue with fewer/more solutions than ranks.
@@ -635,11 +580,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   }
   // Joint first stage solution vector pre all gather
-  /*
-  cout << "First stage solution before allgather" << endl;
-  copy(fsSolutions.begin(), fsSolutions.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
+
 
   // MPI call to share all first stage solutions.
   MPI_Allgather(&fsSolVec[0], nvar1, MPI_DOUBLE,
@@ -652,11 +593,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   MPI_Allreduce(MPI_IN_PLACE, &diffFsSol[0], nvar1, MPI_DOUBLE, MPI_SUM,
 		ctx.comm());
 
-  /*
-  cout << "Diff First stage solution after reduction" << endl;
-  copy(diffFsSol.begin(), diffFsSol.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   // TODO: Change to <algorithm> calls
   // Update average Fs soln
@@ -666,11 +602,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
     if (isZero(aveFsSoln[col],1e-6)) aveFsSoln[col] = 0.0;
   }
 
-  /*
-  cout << "Average First stage solution after update" << endl;
-  copy(aveFsSoln.begin(), aveFsSoln.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   diffFsSol.clear();
 
@@ -697,11 +628,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 	// insert
 	fsSet.insert(fsbool);
 
-	/*
-	cout << "First stage solution " << soln << " added to be cut later" << endl;
-	copy(fsbool.begin(), fsbool.end(), ostream_iterator<double>(cout, " "));
-	cout << endl;
-	*/
 
       }
 
@@ -720,11 +646,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
   }
 
   // Joint first stage solution vector post all gather
-  /*
-  cout << "First stage solution after allgather" << endl;
-  copy(fsSolutions.begin(), fsSolutions.end(), ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
+
 
   // Now, all ranks have all the solutions.
   // And all ranks know which solution should be used.
@@ -815,12 +737,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       }
 
       // sanity check to print lb
-      /*
-      const double *lb = scen_wrap[localscen-1]->getColLower();
-      cout << "Printing set lower bound" << endl;
-      copy(lb, lb+nvar1, ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
+ 
 
       // Solving directly with Cbc
       cbcModel->branchAndBound();
@@ -840,34 +757,19 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       // TODO: Use the solutions we still have
 
       // Print first and second stage solution vector
-      /*
-      cout << "First and second Stage solution" << endl;
-      copy(solVec, solVec+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
 
       // put second stage part of solVec in soln position in ssSolutions vector.
       memcpy(&ssSolutions[localscen-1][soln*nvar2],
 	     &solVec[nvar1], nvar2 * sizeof(double));
 
       // Second stage solution vector
-      /*
-      cout << "Second stage solution for scenario " << localscen << endl;
-      copy(ssSolutions[localscen-1].begin(), ssSolutions[localscen-1].end(),
-	   ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
+
 
       // Need to get it fresh after the solve, else it seems corrupted.
       // get objective coefficients
       objVec = scen_wrap[localscen-1]->getObjCoefficients();
 
       // Print objective vector
-      /*
-      cout << "Objective vector" << endl;
-      copy(objVec, objVec+nvar1+nvar2, ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
 
       // Can get FS objective as long as we do it only once per solution
       // evaluate, dot product of solVec and objVec, to get objective contribution
@@ -881,13 +783,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
       }
 
       // First stage objective value vector
-      /*
-      cout << "First stage objective values after scenario/soln " << localscen
-	   << " " << soln << endl;
-      copy(fsObjvalues.begin(), fsObjvalues.end(),
-	   ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
+
 
       // evaluate, dot product of solVec and objVec, to get objective contribution
       // of second stage variables
@@ -898,13 +794,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 					&solVec[nvar1], ssObjvalues[soln]);
 
       // Second stage objective value vector
-      /*
-      cout << "Second stage objective values after scenario/soln " << localscen
-	   << " " << soln << endl;
-      copy(ssObjvalues.begin(), ssObjvalues.end(),
-	   ostream_iterator<double>(cout, " "));
-      cout << endl;
-      */
+
 
     }
 
@@ -930,23 +820,13 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   /*
   // Joint second stage solution vector pre all gather for all solutions
-  cout << "Second stage solution before allgather for scenario" << endl;
-  copy(ssSolutions[localscen-1].begin(), ssSolutions[localscen-1].end(),
-       ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
+
 
   // TODO: Can I use getObjValue() from OsiCbc?
 
   BBSMPS_ALG_LOG_SEV(debug) << "Combining objective value from all scenarios";
 
   // Joint second stage objective vector pre all reduce for all solutions
-  /*
-  cout << "Second stage objective before allreduce for all ranks" << endl;
-  copy(ssObjvalues.begin(), ssObjvalues.end(),
-       ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   // For each solution, collect second stage objective contribution
   // MPI_Allreduce, where you add each elemint
@@ -957,11 +837,7 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 		ctx.comm());
 
   // Joint second stage objective vector post all reduce for all solutions
-  /*
-  cout << "Second stage objective after allreduce for all ranks" << endl;
-  copy(ssObjvalues.begin(), ssObjvalues.end(),
-       ostream_iterator<double>(cout, " "));
-  cout << endl;
+
   */
 
   BBSMPS_ALG_LOG_SEV(debug) << "Now adding first stage contributions for each solution";
@@ -974,12 +850,6 @@ bool BBSMPSHeuristicScenDecom::runHeuristic(BBSMPSNode* node,
 
   // Objective vector for all solutions
 
-  /*
-  cout << "Objective values for all solutions" << endl;
-  copy(ssObjvalues.begin(), ssObjvalues.end(),
-       ostream_iterator<double>(cout, " "));
-  cout << endl;
-  */
 
   // Pick best overall solution add to solution pool
   // Pick the best.

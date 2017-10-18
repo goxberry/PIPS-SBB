@@ -83,83 +83,74 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfFirstStageInitializati
   int BBSMPSProcs=BBSMPSContext.nprocs();
   int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
   PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
-   // cout<<"performing round of initializations 1st stage "<<endl;
-    rootSolver.setStates(warmstart);
-    bool foundAtLeastOne=false;
+  rootSolver.setStates(warmstart);
+  bool foundAtLeastOne=false;
 
-    vector<int> itemsToDo;
-    //Fix variables
-     for (int col = 0; col < input.nFirstStageVars(); col++)
-     {  
-      //  cout<<col<<" "<<sol.getVec(-1)[col]<<" "<<downBranchingHistory.getVec(-1)[col]<<" "<<upBranchingHistory.getVec(-1)[col]<<" "<<input.isFirstStageColInteger(col) <<" "<<! isIntFeas(sol.getVec(-1)[col],intTol)<<" "<<(downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)<<endl;
-        if(input.isFirstStageColInteger(col) && ! isIntFeas(sol.getVec(-1)[col],intTol) && (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)){
-          itemsToDo.push_back(col);
-        }
-        foundAtLeastOne=foundAtLeastOne || (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor);
-     }
-   //  cout<<"ITEMS TO DO SIZES ARE "<<itemsToDo.size()<<endl;
-    // for(int i=0; i< itemsToDo.size(); i++) cout<<itemsToDo[i];
-    //  cout<<endl;
-//
-     if (itemsToDo.size()==0)return foundAtLeastOne;
-     int chunkSize=itemsToDo.size()/BBSMPSProcs;
-     int reminder=itemsToDo.size()-chunkSize*BBSMPSProcs;
-     int myStart=BBSMPSMyPe*chunkSize;
-     int myEnd=myStart+chunkSize;
-     if (BBSMPSMyPe<reminder){
-        myStart+=BBSMPSMyPe;
-        myEnd+=BBSMPSMyPe+1;
-      }
-      else{
-        myStart+=reminder;
-        myEnd+=reminder;
-      }
-   //   cout<<"My start and ends are "<<myStart<<" "<<myEnd<<" total number of items "<<itemsToDo.size()<<endl;
-
-      vector<double>myBuff(itemsToDo.size()*4,0);
-      for (int i=myStart; i< myEnd; i++){
-        int col =itemsToDo[i];
-        if(input.isFirstStageColInteger(col) && ! isIntFeas(sol.getVec(-1)[col],intTol) && (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)){
-          initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, -1, col);
-          myBuff[i*4]=upPseudoCost.getVec(-1)[col];
-          myBuff[i*4+1]=downPseudoCost.getVec(-1)[col];
-          myBuff[i*4+2]=upBranchingHistory.getVec(-1)[col];
-          myBuff[i*4+3]=downBranchingHistory.getVec(-1)[col];
-        }  
-     }
-     vector<int> recvCounts(BBSMPSProcs,0);
-     vector<int> displs(BBSMPSProcs,0);
-     for (int proc=0; proc<BBSMPSProcs; proc ++){
-      int procStart=proc*chunkSize;
-      int procEnd=procStart+chunkSize;
-      if (proc<reminder){
-        procStart+=proc;
-        procEnd+=proc+1;
-      }
-      else{
-        procStart+=reminder;
-        procEnd+=reminder;
-      }
-      recvCounts[proc]=(procEnd-procStart)*4;
-      if (proc!=0){
-        displs[proc]=displs[proc-1]+recvCounts[proc-1];
-      }
+  vector<int> itemsToDo;
+  //Fix variables
+  for (int col = 0; col < input.nFirstStageVars(); col++)
+  {  
+    if(input.isFirstStageColInteger(col) && ! isIntFeas(sol.getVec(-1)[col],intTol) && (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)){
+      itemsToDo.push_back(col);
     }
-   //      cout<<" revcounts "<<recvCounts[0]<<" "<<recvCounts[1]<<endl;
-   //  cout<<" displs "<<displs[0]<<" "<<displs[1]<<endl;
-      double timStart=MPI_Wtime();
-      MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&myBuff[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-      communicationTime+=MPI_Wtime()-timStart;
-      for (int i=0; i<itemsToDo.size();i++){
-        int col =itemsToDo[i];
-        upPseudoCost.getVec(-1)[col]=myBuff[i*4];
-        downPseudoCost.getVec(-1)[col]=myBuff[i*4+1];
-        upBranchingHistory.getVec(-1)[col]=myBuff[i*4+2];
-        downBranchingHistory.getVec(-1)[col]=myBuff[i*4+3];
-      }
-    
+    foundAtLeastOne=foundAtLeastOne || (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor);
+  }
+  if (itemsToDo.size()==0)return foundAtLeastOne;
+  int chunkSize=itemsToDo.size()/BBSMPSProcs;
+  int reminder=itemsToDo.size()-chunkSize*BBSMPSProcs;
+  int myStart=BBSMPSMyPe*chunkSize;
+  int myEnd=myStart+chunkSize;
+  if (BBSMPSMyPe<reminder){
+    myStart+=BBSMPSMyPe;
+    myEnd+=BBSMPSMyPe+1;
+  }
+  else{
+    myStart+=reminder;
+    myEnd+=reminder;
+  }
 
-     
+  vector<double>myBuff(itemsToDo.size()*4,0);
+  for (int i=myStart; i< myEnd; i++){
+    int col =itemsToDo[i];
+    if(input.isFirstStageColInteger(col) && ! isIntFeas(sol.getVec(-1)[col],intTol) && (downBranchingHistory.getVec(-1)[col]<reliabilityFactor || upBranchingHistory.getVec(-1)[col]<reliabilityFactor)){
+      initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, -1, col);
+      myBuff[i*4]=upPseudoCost.getVec(-1)[col];
+      myBuff[i*4+1]=downPseudoCost.getVec(-1)[col];
+      myBuff[i*4+2]=upBranchingHistory.getVec(-1)[col];
+      myBuff[i*4+3]=downBranchingHistory.getVec(-1)[col];
+    }  
+   }
+   vector<int> recvCounts(BBSMPSProcs,0);
+   vector<int> displs(BBSMPSProcs,0);
+   for (int proc=0; proc<BBSMPSProcs; proc ++){
+    int procStart=proc*chunkSize;
+    int procEnd=procStart+chunkSize;
+    if (proc<reminder){
+      procStart+=proc;
+      procEnd+=proc+1;
+    }
+    else{
+      procStart+=reminder;
+      procEnd+=reminder;
+    }
+    recvCounts[proc]=(procEnd-procStart)*4;
+    if (proc!=0){
+      displs[proc]=displs[proc-1]+recvCounts[proc-1];
+    }
+  }
+  double timStart=MPI_Wtime();
+  MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&myBuff[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
+  communicationTime+=MPI_Wtime()-timStart;
+  for (int i=0; i<itemsToDo.size();i++){
+    int col =itemsToDo[i];
+    upPseudoCost.getVec(-1)[col]=myBuff[i*4];
+    downPseudoCost.getVec(-1)[col]=myBuff[i*4+1];
+    upBranchingHistory.getVec(-1)[col]=myBuff[i*4+2];
+    downBranchingHistory.getVec(-1)[col]=myBuff[i*4+3];
+  }
+
+
+ 
     
      //Exchange values
 
@@ -197,12 +188,7 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfFirstStageInitializati
      //MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&upBranchingHistory.getVec(-1)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
      //MPI_Allgatherv(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&downBranchingHistory.getVec(-1)[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
 
-  //   cout<<"we finished communication"<<endl;
-  //    for (int col = 0; col < input.nFirstStageVars(); col++)
-  //   { 
- //       cout<<" "<<col<<":"<<upBranchingHistory.getVec(-1)[col]<<" "<<downBranchingHistory.getVec(-1)[col];
- //     }
- //     cout<<endl;
+  
     return foundAtLeastOne;
 
 
@@ -217,147 +203,116 @@ bool BBSMPSParallelPseudoCostBranchingRule::performRoundOfSecondStageInitializat
   int BBSMPSProcs=BBSMPSContext.nprocs();
   int BBSMPSMyPe=BBSMPSSolver::instance()->getSBBMype();
   PIPSSInterface &rootSolver= BBSMPSSolver::instance()->getPIPSInterface();
- //   cout<<"performing round of initializations 2st stage "<<endl;
-    
-    rootSolver.setStates(warmstart);
-    bool foundAtLeastOne=false;
-    bool atLeastOneVarWasFrac=false;
+
+  rootSolver.setStates(warmstart);
+  bool foundAtLeastOne=false;
+  bool atLeastOneVarWasFrac=false;
 
 
   //Fix variables
   vector<double>myBuff;
-    for (int scen = 0; scen < input.nScenarios(); scen++)
-    {
-   //   cout<<" processor  got into scen "<<scen<<endl;
-      vector<int> itemsToDo;
+  for (int scen = 0; scen < input.nScenarios(); scen++)
+  {
+    vector<int> itemsToDo;
 
-      int owner=-1;
-      if (ctx.assignedScenario(scen))owner=mype;
-      int sharedOwner;
-      int errorFlag = MPI_Allreduce(&owner, &sharedOwner, 1, MPI_INT,  MPI_MAX, ctx.comm());
-        
-      if (owner!=-1){
-
-        for (int col = 0; col < input.nSecondStageVars(scen); col++)
-        {
-          if(input.isSecondStageColInteger(scen,col) && !isIntFeas(sol.getVec(scen)[col],intTol) && (downBranchingHistory.getVec(scen)[col]<reliabilityFactor || upBranchingHistory.getVec(scen)[col]<reliabilityFactor)){
- 
-            itemsToDo.push_back(col);
-          }
-          foundAtLeastOne=foundAtLeastOne || (downBranchingHistory.getVec(scen)[col]<reliabilityFactor || upBranchingHistory.getVec(scen)[col]<reliabilityFactor);
-        }
-        int chunkSize=itemsToDo.size()/BBSMPSProcs;
-        int reminder=itemsToDo.size()-chunkSize*BBSMPSProcs;
-        int myStart=BBSMPSMyPe*chunkSize;
-        int myEnd=myStart+chunkSize;
-        if (BBSMPSMyPe<reminder){
-          myStart+=BBSMPSMyPe;
-          myEnd+=BBSMPSMyPe+1;
-        }
-        else{
-          myStart+=reminder;
-          myEnd+=reminder;
-        }
-
-   //     cout<<"My start and ends are "<<myStart<<" "<<myEnd<<" total number of items "<<itemsToDo.size()<<"-->";
-      /*    for(int i=0; i< itemsToDo.size();i++){
-          cout<<itemsToDo[i]<<" ";
-         }*/
-
-      /*   cout<<endl;*/
-        int nItemsToDo=myEnd-myStart;
-
-        MPI_Bcast( &nItemsToDo, 1, MPI_INT, sharedOwner, ctx.comm());
-        if (itemsToDo.size()!=0){
-         
-
-          for (int i=myStart; i< myEnd; i++){
-            int col =itemsToDo[i];
-            initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, col);
-            myBuff.push_back(col);
-            myBuff.push_back(scen);
-            myBuff.push_back(upPseudoCost.getVec(scen)[col]);
-            myBuff.push_back(downPseudoCost.getVec(scen)[col]);
-            myBuff.push_back(upBranchingHistory.getVec(scen)[col]);
-            myBuff.push_back(downBranchingHistory.getVec(scen)[col]);
-          }
-
+    int owner=-1;
+    if (ctx.assignedScenario(scen))owner=mype;
+    int sharedOwner;
+    int errorFlag = MPI_Allreduce(&owner, &sharedOwner, 1, MPI_INT,  MPI_MAX, ctx.comm());
       
+    if (owner!=-1){
 
+      for (int col = 0; col < input.nSecondStageVars(scen); col++)
+      {
+        if(input.isSecondStageColInteger(scen,col) && !isIntFeas(sol.getVec(scen)[col],intTol) && (downBranchingHistory.getVec(scen)[col]<reliabilityFactor || upBranchingHistory.getVec(scen)[col]<reliabilityFactor)){
 
-        
-         
-  //       cout<<scen<<" revcounts ";
- /*        for(int i=0; i< recvCounts.size();i++){
-          cout<<recvCounts[i]<<" ";
-         }
-         cout<<endl;
-
-         cout<<scen<<" displs ";
-         for(int i=0; i< displs.size();i++){
-          cout<<displs[i]<<" ";
-         }
-         cut<<endl;
-*/
-         }
-       }
-
-        else{
-        int nItemsToDo;
-        MPI_Bcast( &nItemsToDo, 1, MPI_INT, sharedOwner, ctx.comm());
-        if (nItemsToDo!=0){
-          for (int i=0; i< nItemsToDo; i++){
-            initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, -1);
-            foundAtLeastOne=1;
-          }
+          itemsToDo.push_back(col);
         }
+        foundAtLeastOne=foundAtLeastOne || (downBranchingHistory.getVec(scen)[col]<reliabilityFactor || upBranchingHistory.getVec(scen)[col]<reliabilityFactor);
+      }
+      int chunkSize=itemsToDo.size()/BBSMPSProcs;
+      int reminder=itemsToDo.size()-chunkSize*BBSMPSProcs;
+      int myStart=BBSMPSMyPe*chunkSize;
+      int myEnd=myStart+chunkSize;
+      if (BBSMPSMyPe<reminder){
+        myStart+=BBSMPSMyPe;
+        myEnd+=BBSMPSMyPe+1;
+      }
+      else{
+        myStart+=reminder;
+        myEnd+=reminder;
       }
 
+ 
+      int nItemsToDo=myEnd-myStart;
+
+      MPI_Bcast( &nItemsToDo, 1, MPI_INT, sharedOwner, ctx.comm());
+      if (itemsToDo.size()!=0){
+       
+
+        for (int i=myStart; i< myEnd; i++){
+          int col =itemsToDo[i];
+          initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, col);
+          myBuff.push_back(col);
+          myBuff.push_back(scen);
+          myBuff.push_back(upPseudoCost.getVec(scen)[col]);
+          myBuff.push_back(downPseudoCost.getVec(scen)[col]);
+          myBuff.push_back(upBranchingHistory.getVec(scen)[col]);
+          myBuff.push_back(downBranchingHistory.getVec(scen)[col]);
+        }
+
+    
+
+
+       }
      }
 
-        vector<int> recvCounts(BBSMPSProcs,0);
-        recvCounts[BBSMPSMyPe]=myBuff.size();
-        MPI_Allgather(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&recvCounts[0],1,MPI_INT,BBSMPSContext.comm());
-
-       vector<int> displs(BBSMPSProcs,0);
-       int totalSize=0;
-       for (int proc=0; proc<BBSMPSProcs; proc ++){
-        totalSize+=recvCounts[proc];
-        if (proc!=0){
-          displs[proc]=displs[proc-1]+recvCounts[proc-1];
+      else{
+      int nItemsToDo;
+      MPI_Bcast( &nItemsToDo, 1, MPI_INT, sharedOwner, ctx.comm());
+      if (nItemsToDo!=0){
+        for (int i=0; i< nItemsToDo; i++){
+          initializeVariable(sol,warmstart, lpRelaxationObjValue, lb, ub, scen, -1);
+          foundAtLeastOne=1;
         }
-
       }
-      vector<double> outBuffer(totalSize,0);
+    }
+
+  }
+
+  vector<int> recvCounts(BBSMPSProcs,0);
+  recvCounts[BBSMPSMyPe]=myBuff.size();
+  MPI_Allgather(MPI_IN_PLACE,0, MPI_DATATYPE_NULL,&recvCounts[0],1,MPI_INT,BBSMPSContext.comm());
+
+  vector<int> displs(BBSMPSProcs,0);
+  int totalSize=0;
+  for (int proc=0; proc<BBSMPSProcs; proc ++){
+    totalSize+=recvCounts[proc];
+    if (proc!=0){
+      displs[proc]=displs[proc-1]+recvCounts[proc-1];
+    }
+
+  }
+  vector<double> outBuffer(totalSize,0);
 
 
-          double timStart=MPI_Wtime();
-          MPI_Allgatherv(&myBuff[0],myBuff.size(), MPI_DOUBLE,&outBuffer[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
-          communicationTime+=MPI_Wtime()-timStart;
-          for (int i=0; i<outBuffer.size();i+=6){
-            int col =outBuffer[i];
-            int scen =outBuffer[i+1];
-            upPseudoCost.getVec(scen)[col]=outBuffer[i+2];
-            downPseudoCost.getVec(scen)[col]=outBuffer[i+3];
-            upBranchingHistory.getVec(scen)[col]=outBuffer[i+4];
-            downBranchingHistory.getVec(scen)[col]=outBuffer[i+5];
-          }
+  double timStart=MPI_Wtime();
+  MPI_Allgatherv(&myBuff[0],myBuff.size(), MPI_DOUBLE,&outBuffer[0],&recvCounts[0],&displs[0],MPI_DOUBLE,BBSMPSContext.comm());
+  communicationTime+=MPI_Wtime()-timStart;
+  for (int i=0; i<outBuffer.size();i+=6){
+    int col =outBuffer[i];
+    int scen =outBuffer[i+1];
+    upPseudoCost.getVec(scen)[col]=outBuffer[i+2];
+    downPseudoCost.getVec(scen)[col]=outBuffer[i+3];
+    upBranchingHistory.getVec(scen)[col]=outBuffer[i+4];
+    downBranchingHistory.getVec(scen)[col]=outBuffer[i+5];
+  }
 
-          
-    //       cout<<"we finished communication"<<endl;
-  //    for (int col = 0; col < input.nFirstStageVars(); col++)
-  //   { 
- //       cout<<" "<<col<<":"<<upBranchingHistory.getVec(scen)[col]<<" "<<downBranchingHistory.getVec(scen)[col];
-  //    }
-    //  cout<<endl;
-
-     
-
-    int foundInteger=(foundAtLeastOne);
-    int globalValue;
-    MPI_Allreduce(&foundInteger, &globalValue, 1, MPI_INT,  MPI_MAX, BBSMPSContext.comm());
-    MPI_Allreduce(&foundInteger, &globalValue, 1, MPI_INT,  MPI_MAX, ctx.comm());
-    return globalValue>0;
+  int foundInteger=(foundAtLeastOne);
+  int globalValue;
+  MPI_Allreduce(&foundInteger, &globalValue, 1, MPI_INT,  MPI_MAX, BBSMPSContext.comm());
+  MPI_Allreduce(&foundInteger, &globalValue, 1, MPI_INT,  MPI_MAX, ctx.comm());
+  return globalValue>0;
 }
 
 
